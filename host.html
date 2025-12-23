@@ -455,7 +455,7 @@
   <!-- HEADER -->
   <div class="header">
     <img src="assets/logos/fah.png" alt="FAH Marie-Curie" class="logo">
-    <a href="dashboard.html" class="btn-back">
+    <a href="index.html" class="btn-back">
       ← Retour au tableau de bord
     </a>
   </div>
@@ -544,7 +544,7 @@
 
       if (!sessionId) {
         alert('Session invalide');
-        window.location.href = 'dashboard.html';
+        window.location.href = 'index.html';
         return;
       }
 
@@ -1002,7 +1002,7 @@
 
     document.getElementById('close-btn').addEventListener('click', async () => {
       await supabaseClient.from('live_sessions').delete().eq('id', sessionId);
-      window.location.href = 'dashboard.html';
+      window.location.href = 'index.html';
     });
 
     function escapeHtml(unsafe) {

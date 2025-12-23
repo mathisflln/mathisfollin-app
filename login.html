@@ -319,7 +319,7 @@
     async function checkExistingSession() {
       const { data } = await supabaseClient.auth.getUser();
       if (data.user) {
-        window.location.href = "dashboard.html";
+        window.location.href = "index.html";
       }
     }
 
@@ -348,7 +348,7 @@
         }
         
         if (data.user) {
-          window.location.href = "dashboard.html";
+          window.location.href = "index.html";
         }
       } catch (error) {
         console.error('Erreur de connexion:', error);
