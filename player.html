@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rejoindre Quiz - FAH Marie-Curie</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Stack+Sans+Headline:wght@200..700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: "Stack Sans Headline", sans-serif; 
+      background: #FAFAFA;
+      min-height: 100vh; 
+      display: flex;
+      flex-direction: column;
+      padding: 20px; 
+    }
+    
+    /* HEADER */
+    .header {
+      max-width: 600px;
+      width: 100%;
+      margin: 0 auto 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .logo {
+      height: 40px;
+      width: auto;
+    }
+    
+    /* CONTAINER */
+    .container { 
+      width: 100%; 
+      max-width: 600px; 
+      margin: 0 auto;
+      flex: 1;
+    }
+    
+    .card { 
+      background: white; 
+      border-radius: 15px; 
+      padding: 40px; 
+      border: 1px solid #e5e5e5;
+    }
+    
+    /* JOIN SCREEN */
+    #join-screen h1 {
+      font-size: 2rem;
+      font-weight: 600;
+      color: #0d0d0d;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .input-group { 
+      margin-bottom: 20px; 
+    }
+    
+    label { 
+      display: block; 
+      font-weight: 500; 
+      margin-bottom: 8px; 
+      color: #0d0d0d;
+      font-size: 0.95rem;
+    }
+    
+    input { 
+      width: 100%; 
+      padding: 15px; 
+      border: 1px solid #e5e5e5; 
+      border-radius: 8px; 
+      font-family: inherit; 
+      font-size: 1rem; 
+      font-weight: 300;
+      transition: all 0.2s;
+      color: #0d0d0d;
+    }
+    
+    input:focus { 
+      outline: none; 
+      border-color: #0d0d0d;
+    }
+    
+    .btn { 
+      width: 100%; 
+      padding: 15px 30px; 
+      border: none; 
+      border-radius: 8px; 
+      background: #0d0d0d; 
+      color: white; 
+      font-family: inherit; 
+      font-size: 1rem; 
+      font-weight: 500; 
+      cursor: pointer; 
+      transition: all 0.2s; 
+    }
+    
+    .btn:hover:not(:disabled) { 
+      background: #2d2d2d;
+    }
+    
+    .btn:disabled { 
+      opacity: 0.5; 
+      cursor: not-allowed; 
+    }
+    
+    .error { 
+      background: #fee; 
+      color: #c33; 
+      padding: 12px 20px; 
+      border-radius: 8px; 
+      margin-bottom: 20px; 
+      text-align: center;
+      border: 1px solid #fcc;
+      font-size: 0.95rem;
+    }
+    
+    /* WAITING SCREEN */
+    .waiting-screen { 
+      display: none; 
+    }
+    
+    .waiting-screen h1 {
+      font-size: 2rem;
+      font-weight: 600;
+      color: #0d0d0d;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .waiting-message { 
+      text-align: center; 
+      font-size: 1.1rem; 
+      color: #666; 
+      margin: 30px 0;
+      font-weight: 300;
+      line-height: 1.6;
+    }
+    
+    .waiting-message strong {
+      color: #0d0d0d;
+      font-weight: 500;
+    }
+    
+    .spinner { 
+      width: 50px; 
+      height: 50px; 
+      border: 3px solid #f3f3f3; 
+      border-top: 3px solid #0d0d0d; 
+      border-radius: 50%; 
+      animation: spin 1s linear infinite; 
+      margin: 20px auto; 
+    }
+    
+    @keyframes spin { 
+      to { transform: rotate(360deg); } 
+    }
+    
+    /* GAME SCREEN */
+    .game-screen { 
+      display: none; 
+    }
+    
+    .timer-display { 
+      text-align: center; 
+      font-size: 2rem; 
+      font-weight: 700; 
+      color: #0d0d0d; 
+      margin-bottom: 20px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      border: 1px solid #e5e5e5;
+    }
+    
+    .timer-display.warning { 
+      color: #c33;
+      background: #fee;
+      border-color: #fcc;
+      animation: pulse 1s infinite; 
+    }
+    
+    @keyframes pulse { 
+      0%, 100% { opacity: 1; } 
+      50% { opacity: 0.5; } 
+    }
+    
+    .question-text { 
+      font-size: 1.5rem; 
+      font-weight: 600; 
+      text-align: center; 
+      margin-bottom: 30px; 
+      color: #0d0d0d;
+      line-height: 1.3;
+    }
+    
+    .score-display { 
+      text-align: center; 
+      margin: 20px 0 30px; 
+      padding: 20px; 
+      background: #FFFF10; 
+      border-radius: 10px;
+    }
+    
+    .score-label { 
+      font-size: 0.95rem; 
+      color: #666;
+      font-weight: 400;
+      margin-bottom: 5px;
+    }
+    
+    .score-value { 
+      font-size: 2rem; 
+      font-weight: 700; 
+      color: #0d0d0d; 
+    }
+    
+    .options-grid { 
+      display: grid; 
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    
+    .option-btn { 
+      padding: 25px 20px; 
+      border: none; 
+      border-radius: 12px; 
+      font-family: inherit; 
+      font-size: 1.1rem; 
+      font-weight: 500; 
+      color: white; 
+      cursor: pointer; 
+      transition: all 0.3s;
+      border: 3px solid transparent;
+    }
+    
+    .option-btn:hover:not(:disabled) { 
+      transform: scale(1.02);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .option-btn:disabled { 
+      opacity: 0.8; 
+      cursor: not-allowed; 
+    }
+    
+    .option-btn.selected { 
+      border: 3px solid #0d0d0d;
+      box-shadow: 0 0 20px rgba(0,0,0,0.2);
+      transform: scale(1.02);
+    }
+    
+    .option-a { background: #fef2d6; color: #765308; }
+    .option-b { background: #c5d7ff; color: #0a1944; }
+    .option-c { background: #fce0f8; color: #c31fa0; }
+    .option-d { background: #feefeb; color: #6f1808;}
+    
+    .result-message { 
+      text-align: center; 
+      padding: 30px; 
+      font-size: 1.2rem; 
+      font-weight: 500;
+      display: none;
+      background: #f8f9fa;
+      border-radius: 10px;
+      border: 1px solid #e5e5e5;
+      margin-top: 20px;
+    }
+    
+    .result-icon { 
+      font-size: 3rem; 
+      margin-bottom: 15px; 
+    }
+    
+    .result-correct { 
+      color: #2ecc71;
+      font-weight: 600;
+    }
+    
+    .result-wrong { 
+      color: #e74c3c;
+      font-weight: 600;
+    }
+    
+    .result-message .spinner {
+      margin: 10px auto;
+    }
+    
+    /* FINAL SCREEN */
+    .final-screen { 
+      display: none; 
+    }
+    
+    .final-title { 
+      font-size: 2.5rem; 
+      font-weight: 700; 
+      text-align: center; 
+      margin-bottom: 20px;
+      color: #0d0d0d;
+    }
+    
+    .final-rank { 
+      text-align: center; 
+      font-size: 1.3rem; 
+      color: #666;
+      font-weight: 400;
+      margin-bottom: 30px;
+    }
+    
+    .final-rank strong {
+      color: #0d0d0d;
+      font-weight: 600;
+    }
+    
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      .card {
+        padding: 25px 20px;
+      }
+      
+      .question-text {
+        font-size: 1.3rem;
+      }
+      
+      .timer-display {
+        font-size: 1.5rem;
+        padding: 15px;
+      }
+      
+      .final-title {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- HEADER -->
+  <div class="header">
+    <img src="assets/logos/fah.png" alt="FAH Marie-Curie" class="logo">
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <!-- JOIN SCREEN -->
+      <div id="join-screen">
+        <h1>Rejoindre le Quiz</h1>
+        <div id="error-message" class="error" style="display:none;"></div>
+        <form id="join-form">
+          <div class="input-group">
+            <label for="code">Code de la session</label>
+            <input type="text" id="code" placeholder="123456" maxlength="6" required>
+          </div>
+          <div class="input-group">
+            <label for="nickname">Votre pseudo</label>
+            <input type="text" id="nickname" placeholder="Entrez votre pseudo" maxlength="20" required>
+          </div>
+          <button type="submit" class="btn" id="join-btn">Rejoindre</button>
+        </form>
+      </div>
+
+      <!-- WAITING SCREEN -->
+      <div id="waiting-screen" class="waiting-screen">
+        <h1>✓ Connecté !</h1>
+        <div class="waiting-message">
+          Bienvenue <strong id="player-name"></strong> !<br><br>
+          En attente du démarrage du quiz par l'hôte...
+        </div>
+        <div class="spinner"></div>
+      </div>
+
+      <!-- GAME SCREEN -->
+      <div id="game-screen" class="game-screen">
+        <div class="timer-display" id="timer">⏱️ 30s</div>
+        
+        <div class="score-display">
+          <div class="score-label">Votre score</div>
+          <div class="score-value" id="score">0</div>
+        </div>
+        
+        <div class="question-text" id="question-text"></div>
+
+        <div class="options-grid" id="options-grid"></div>
+        
+        <div id="result-message" class="result-message"></div>
+      </div>
+
+      <!-- FINAL SCREEN -->
+      <div id="final-screen" class="final-screen">
+        <div class="final-title">🎉 Quiz terminé !</div>
+        <div class="final-rank" id="final-rank"></div>
+        <div class="score-display">
+          <div class="score-label">Score final</div>
+          <div class="score-value" id="final-score">0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://ckfdysasgawyixbxjyfz.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrZmR5c2FzZ2F3eWl4YnhqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5ODg1NjcsImV4cCI6MjA3NzU2NDU2N30.t0ubaRk5sz7kewyEsOg4CpFvj47S9U1J1SP_3DQBmE8";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let sessionId = null;
+    let participantId = null;
+    let currentScore = 0;
+    let currentQuestion = null;
+    let questionStartTime = null;
+    let hasAnswered = false;
+
+    // Pre-fill code from URL if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const codeParam = urlParams.get('code');
+    if (codeParam) {
+      document.getElementById('code').value = codeParam;
+    }
+
+    document.getElementById('join-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await joinSession();
+    });
+
+    async function joinSession() {
+      const code = document.getElementById('code').value.trim();
+      const nickname = document.getElementById('nickname').value.trim();
+      const errorEl = document.getElementById('error-message');
+
+      if (!code || !nickname) {
+        showError('Veuillez remplir tous les champs');
+        return;
+      }
+
+      try {
+        // Find session by code
+        const { data: session, error: sessionError } = await supabaseClient
+          .from('live_sessions')
+          .select('*')
+          .eq('code', code)
+          .single();
+
+        if (sessionError || !session) {
+          showError('Code de session invalide');
+          return;
+        }
+
+        if (session.status === 'finished') {
+          showError('Cette session est terminée');
+          return;
+        }
+
+        sessionId = session.id;
+
+        // Check if nickname is already taken in this session
+        const { data: existingParticipants } = await supabaseClient
+          .from('session_participants')
+          .select('nickname')
+          .eq('session_id', sessionId)
+          .eq('nickname', nickname);
+
+        if (existingParticipants && existingParticipants.length > 0) {
+          showError('Ce pseudo est déjà pris dans cette session');
+          return;
+        }
+
+        // Join session
+        const { data: participant, error: joinError } = await supabaseClient
+          .from('session_participants')
+          .insert([{
+            session_id: sessionId,
+            nickname: nickname,
+            score: 0
+          }])
+          .select()
+          .single();
+
+        if (joinError) throw joinError;
+
+        participantId = participant.id;
+        document.getElementById('player-name').textContent = nickname;
+
+        // Switch to waiting screen
+        document.getElementById('join-screen').style.display = 'none';
+        document.getElementById('waiting-screen').style.display = 'block';
+
+        // Subscribe to session updates
+        subscribeToSession();
+
+      } catch (err) {
+        console.error('Join error:', err);
+        showError('Erreur lors de la connexion: ' + err.message);
+      }
+    }
+
+    function showError(message) {
+      const errorEl = document.getElementById('error-message');
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      setTimeout(() => {
+        errorEl.style.display = 'none';
+      }, 5000);
+    }
+
+    function subscribeToSession() {
+      supabaseClient
+        .channel('session-updates')
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'live_sessions',
+          filter: `id=eq.${sessionId}`
+        }, async (payload) => {
+          const session = payload.new;
+          
+          if (session.status === 'active' && session.current_question_index >= 0) {
+            await loadQuestion(session);
+          } else if (session.status === 'finished') {
+            await showFinalScreen();
+          }
+        })
+        .subscribe();
+    }
+
+    async function loadQuestion(session) {
+      hasAnswered = false;
+      
+      // Get quiz data
+      const { data: quiz } = await supabaseClient
+        .from('quizzes')
+        .select('questions')
+        .eq('id', session.quiz_id)
+        .single();
+    
+      const questions = typeof quiz.questions === 'string' ? JSON.parse(quiz.questions) : quiz.questions;
+      currentQuestion = questions[session.current_question_index];
+      currentQuestion.index = session.current_question_index;
+    
+      questionStartTime = new Date(session.question_start_time).getTime();
+    
+      // Switch to game screen
+      document.getElementById('waiting-screen').style.display = 'none';
+      document.getElementById('game-screen').style.display = 'block';
+      document.getElementById('result-message').style.display = 'none';
+
+      // Rafraîchir le score actuel depuis le serveur
+      const { data: participant } = await supabaseClient
+        .from('session_participants')
+        .select('score')
+        .eq('id', participantId)
+        .single();
+      
+      if (participant) {
+        currentScore = participant.score;
+        document.getElementById('score').textContent = currentScore;
+      }
+    
+      // Display question
+      document.getElementById('question-text').textContent = currentQuestion.question;
+    
+      // Display options
+      const optionsGrid = document.getElementById('options-grid');
+      optionsGrid.innerHTML = '';
+      
+      const colors = ['option-a', 'option-b', 'option-c', 'option-d'];
+      currentQuestion.options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.className = `option-btn ${colors[i]}`;
+        btn.textContent = opt;
+        btn.addEventListener('click', () => selectAnswer(i));
+        optionsGrid.appendChild(btn);
+      });
+    
+      // Start timer
+      startTimer(currentQuestion.timeLimit || 30);
+    }
+
+    let currentTimerInterval = null;
+
+    function startTimer(seconds) {
+      let timeLeft = seconds;
+      const timerEl = document.getElementById('timer');
+      timerEl.textContent = `⏱️ ${timeLeft}s`;
+      timerEl.classList.remove('warning');
+    
+      if (currentTimerInterval) clearInterval(currentTimerInterval);
+    
+      currentTimerInterval = setInterval(() => {
+        timeLeft--;
+        timerEl.textContent = `⏱️ ${timeLeft}s`;
+    
+        if (timeLeft <= 5) {
+          timerEl.classList.add('warning');
+        }
+    
+        if (timeLeft <= 0) {
+          clearInterval(currentTimerInterval);
+          disableOptions();
+          displayQuestionResult();
+        }
+      }, 1000);
+    }
+
+    async function displayQuestionResult() {
+      // Afficher message d'attente pendant le calcul
+      const resultEl = document.getElementById('result-message');
+      resultEl.innerHTML = '<div class="spinner"></div><div style="color: #667eea; margin-top: 15px;">Calcul des scores...</div>';
+      resultEl.style.display = 'block';
+    
+      // Attendre que le serveur ait calculé les scores (polling)
+      let answer = null;
+      let attempts = 0;
+      const maxAttempts = 50;
+    
+      while (attempts < maxAttempts) {
+        const { data } = await supabaseClient
+          .from('participant_answers')
+          .select('answer_index, is_correct, points_earned')
+          .eq('session_id', sessionId)
+          .eq('participant_id', participantId)
+          .eq('question_index', currentQuestion.index || 0)
+          .maybeSingle();
+    
+        if (data && data.is_correct !== null) {
+          answer = data;
+          break;
+        }
+    
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+    
+      if (answer) {
+        // Récupérer le score total mis à jour
+        const { data: participant } = await supabaseClient
+          .from('session_participants')
+          .select('score')
+          .eq('id', participantId)
+          .single();
+    
+        if (participant) {
+          currentScore = participant.score;
+          document.getElementById('score').textContent = currentScore;
+        }
+    
+        // Afficher le résultat
+        if (answer.is_correct && answer.points_earned) {
+          resultEl.innerHTML = `
+            <div class="result-icon">✓</div>
+            <div class="result-correct">Bonne réponse !</div>
+            <div style="color: #0d0d0d; font-size: 1.1rem; margin-top: 10px; font-weight: 600;">+${answer.points_earned} points</div>
+          `;
+        } else {
+          showResultMessage(false);
+        }
+      } else if (!hasAnswered) {
+        showResultMessage(false);
+      }
+    }
+
+    async function selectAnswer(answerIndex) {
+      if (hasAnswered) return;
+      hasAnswered = true;
+    
+      // Visual feedback
+      const buttons = document.querySelectorAll('.option-btn');
+      buttons.forEach((btn, i) => {
+        if (i === answerIndex) {
+          btn.classList.add('selected');
+        }
+        btn.disabled = true;
+      });
+    
+      // Afficher message d'attente
+      const resultEl = document.getElementById('result-message');
+      resultEl.innerHTML = '<div class="result-icon">⏳</div><div style="color: #0d0d0d;">Réponse enregistrée ! En attente des résultats...</div>';
+      resultEl.style.display = 'block';
+    
+      // Submit answer
+      try {
+        await supabaseClient
+          .from('participant_answers')
+          .insert([{
+            session_id: sessionId,
+            participant_id: participantId,
+            question_index: currentQuestion.index || 0,
+            answer_index: answerIndex
+          }]);
+    
+      } catch (err) {
+        console.error('Error submitting answer:', err);
+      }
+    }
+    
+    function disableOptions() {
+      document.querySelectorAll('.option-btn').forEach(btn => {
+        btn.disabled = true;
+      });
+    }
+
+    function showResultMessage(isCorrect) {
+      const resultEl = document.getElementById('result-message');
+      if (isCorrect) {
+        resultEl.innerHTML = '<div class="result-icon">✓</div><div class="result-correct">Bonne réponse !</div>';
+      } else {
+        resultEl.innerHTML = '<div class="result-icon">✗</div><div class="result-wrong">Mauvaise réponse</div>';
+      }
+      resultEl.style.display = 'block';
+    }
+
+    async function showFinalScreen() {
+      // Get final score and rank
+      const { data: participant } = await supabaseClient
+        .from('session_participants')
+        .select('score')
+        .eq('id', participantId)
+        .single();
+
+      const { data: allParticipants } = await supabaseClient
+        .from('session_participants')
+        .select('score')
+        .eq('session_id', sessionId)
+        .order('score', { ascending: false });
+
+      const rank = allParticipants.findIndex(p => p.score === participant.score) + 1;
+
+      document.getElementById('game-screen').style.display = 'none';
+      document.getElementById('final-screen').style.display = 'block';
+      document.getElementById('final-rank').innerHTML = `Vous êtes <strong>#${rank}</strong> sur <strong>${allParticipants.length}</strong>`;
+      document.getElementById('final-score').textContent = participant.score;
+    }
+  </script>
+</body>
+</html>

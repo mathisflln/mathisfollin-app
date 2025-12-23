@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hôte Quiz - FAH Marie-Curie</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Stack+Sans+Headline:wght@200..700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: "Stack Sans Headline", sans-serif; 
+      background: #FAFAFA;
+      min-height: 100vh; 
+      display: flex;
+      flex-direction: column;
+      padding: 20px; 
+    }
+    
+    /* HEADER */
+    .header {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .logo {
+      height: 40px;
+      width: auto;
+    }
+    
+    .btn-back {
+      padding: 10px 20px;
+      background: transparent;
+      border: 1px solid #d0d0d0;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 400;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .btn-back:hover {
+      border-color: #0d0d0d;
+      color: #0d0d0d;
+    }
+    
+    /* CONTAINER */
+    .container { 
+      width: 100%; 
+      max-width: 1200px; 
+      margin: 0 auto;
+      flex: 1;
+    }
+    
+    .card { 
+      background: white; 
+      border-radius: 15px; 
+      padding: 40px; 
+      border: 1px solid #e5e5e5;
+    }
+    
+    /* WAITING SCREEN */
+    .waiting-screen h1 {
+      font-size: 2rem;
+      font-weight: 600;
+      color: #0d0d0d;
+      margin-bottom: 10px;
+    }
+    
+    .quiz-title { 
+      font-size: 1.2rem; 
+      font-weight: 400; 
+      color: #666;
+      margin-bottom: 40px; 
+    }
+    
+    .code-display { 
+      background: #FFFF10;
+      padding: 40px; 
+      border-radius: 15px; 
+      margin: 30px 0; 
+      text-align: center;
+    }
+    
+    .code-label { 
+      font-size: 0.95rem; 
+      color: #666; 
+      margin-bottom: 10px; 
+      font-weight: 400;
+    }
+    
+    .code-value { 
+      font-size: 4rem; 
+      font-weight: 700; 
+      color: #0d0d0d; 
+      letter-spacing: 15px; 
+    }
+    
+    .join-url { 
+      font-size: 0.95rem; 
+      color: #666; 
+      margin: 20px 0;
+      text-align: center;
+    }
+    
+    .join-url strong {
+      color: #0d0d0d;
+      font-weight: 500;
+    }
+    
+    #qrcode { 
+      margin: 30px auto; 
+      text-align: center;
+    }
+    
+    #qrcode canvas { 
+      border-radius: 10px; 
+      border: 1px solid #e5e5e5;
+    }
+    
+    .participants-list { 
+      margin: 40px 0; 
+    }
+    
+    .participants-title { 
+      font-size: 1.1rem; 
+      font-weight: 500; 
+      margin-bottom: 20px; 
+      color: #0d0d0d; 
+    }
+    
+    .participant-item { 
+      padding: 15px 20px; 
+      background: #f8f9fa; 
+      border-radius: 10px; 
+      margin-bottom: 10px; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      border: 1px solid #e5e5e5;
+    }
+    
+    .participant-name { 
+      font-weight: 400;
+      color: #0d0d0d;
+    }
+    
+    .participant-score { 
+      color: #0d0d0d; 
+      font-weight: 600; 
+    }
+    
+    .btn { 
+      width: 100%; 
+      padding: 15px 30px; 
+      border: none; 
+      border-radius: 8px; 
+      background: #0d0d0d; 
+      color: white; 
+      font-family: inherit; 
+      font-size: 1rem; 
+      font-weight: 500; 
+      cursor: pointer; 
+      transition: all 0.2s; 
+    }
+    
+    .btn:hover:not(:disabled) { 
+      background: #2d2d2d;
+    }
+    
+    .btn:disabled { 
+      opacity: 0.5; 
+      cursor: not-allowed; 
+    }
+    
+    .error { 
+      background: #fee; 
+      color: #c33; 
+      padding: 12px 20px; 
+      border-radius: 8px; 
+      margin-bottom: 20px; 
+      text-align: center;
+      border: 1px solid #fcc;
+    }
+    
+    .waiting-message { 
+      text-align: center; 
+      font-size: 1.1rem; 
+      color: #666; 
+      margin: 30px 0;
+      font-weight: 300;
+    }
+    
+    .spinner { 
+      width: 50px; 
+      height: 50px; 
+      border: 3px solid #f3f3f3; 
+      border-top: 3px solid #0d0d0d; 
+      border-radius: 50%; 
+      animation: spin 1s linear infinite; 
+      margin: 20px auto; 
+    }
+    
+    @keyframes spin { 
+      to { transform: rotate(360deg); } 
+    }
+    
+    /* QUESTION SCREEN */
+    .question-screen { 
+      display: none; 
+    }
+    
+    .question-header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e5e5e5;
+    }
+    
+    .question-number { 
+      font-size: 1rem; 
+      color: #666;
+      font-weight: 400;
+    }
+    
+    .timer { 
+      font-size: 2rem; 
+      font-weight: 700; 
+      color: #0d0d0d; 
+    }
+    
+    .timer.warning { 
+      color: #c33;
+      animation: pulse 1s infinite; 
+    }
+    
+    @keyframes pulse { 
+      0%, 100% { opacity: 1; } 
+      50% { opacity: 0.5; } 
+    }
+    
+    .question-text { 
+      font-size: 1.8rem; 
+      font-weight: 600; 
+      color: #0d0d0d; 
+      margin-bottom: 30px; 
+      text-align: center;
+      line-height: 1.3;
+    }
+    
+    .options-grid { 
+      display: grid; 
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px; 
+      margin-bottom: 30px; 
+    }
+    
+    .option-box { 
+      padding: 30px 20px; 
+      border-radius: 12px; 
+      font-size: 1.3rem; 
+      font-weight: 600; 
+      text-align: center; 
+      cursor: default;
+      transition: all 0.3s;
+      border: 3px solid transparent;
+    }
+    
+    .option-box.correct { 
+      border-color: #2ecc71;
+      transform: scale(1.02);
+      box-shadow: 0 0 20px rgba(46, 204, 113, 0.3);
+    }
+    
+    .option-a { background: #fef2d6; color: #765308; }
+    .option-b { background: #c5d7ff; color: #0a1944; }
+    .option-c { background: #fce0f8; color: #c31fa0; }
+    .option-d { background: #feefeb; color: #6f1808;}
+    
+    .response-stats { 
+      margin: 30px 0; 
+    }
+    
+    .stat-bar { 
+      background: #f8f9fa; 
+      border-radius: 10px; 
+      padding: 15px 20px; 
+      margin-bottom: 12px;
+      border: 1px solid #e5e5e5;
+    }
+    
+    .stat-label { 
+      display: flex; 
+      justify-content: space-between; 
+      margin-bottom: 10px; 
+      font-weight: 400;
+      color: #0d0d0d;
+    }
+    
+    .stat-progress { 
+      height: 30px; 
+      background: #e5e5e5; 
+      border-radius: 8px; 
+      overflow: hidden; 
+    }
+    
+    .stat-fill { 
+      height: 100%; 
+      background: #0d0d0d;
+      transition: width 0.5s; 
+    }
+    
+    .leaderboard { 
+      background: #f8f9fa; 
+      border-radius: 15px; 
+      padding: 30px; 
+      margin: 30px 0;
+      border: 1px solid #e5e5e5;
+    }
+    
+    .leaderboard-title { 
+      font-size: 1.3rem; 
+      font-weight: 600; 
+      margin-bottom: 25px; 
+      text-align: center;
+      color: #0d0d0d;
+    }
+    
+    .podium { 
+      display: grid; 
+      grid-template-columns: repeat(3, 1fr); 
+      gap: 15px; 
+    }
+    
+    .podium-item { 
+      text-align: center; 
+      padding: 25px 20px; 
+      background: white; 
+      border-radius: 10px;
+      border: 1px solid #e5e5e5;
+    }
+    
+    .podium-rank { 
+      font-size: 2.5rem; 
+      font-weight: 700; 
+      margin-bottom: 10px; 
+    }
+    
+    .rank-1 { color: #f39c12; }
+    .rank-2 { color: #95a5a6; }
+    .rank-3 { color: #cd7f32; }
+    
+    .podium-name { 
+      font-weight: 500; 
+      margin-bottom: 8px;
+      color: #0d0d0d;
+    }
+    
+    .podium-score { 
+      color: #666; 
+      font-weight: 600; 
+    }
+    
+    .results-screen { 
+      display: none; 
+    }
+    
+    .final-title { 
+      font-size: 2.5rem; 
+      font-weight: 700; 
+      text-align: center; 
+      margin-bottom: 40px; 
+      color: #0d0d0d; 
+    }
+    
+    .btn-close { 
+      background: #c33;
+      margin-top: 30px; 
+    }
+    
+    .btn-close:hover { 
+      background: #a22;
+    }
+    
+    .empty-participants { 
+      text-align: center; 
+      color: #999; 
+      padding: 30px 20px;
+      font-weight: 300;
+    }
+    
+    .response-counter { 
+      text-align: center; 
+      font-size: 1.2rem; 
+      font-weight: 400; 
+      color: #0d0d0d; 
+      margin-bottom: 25px; 
+      padding: 20px; 
+      background: #FFFF10;
+      border-radius: 10px; 
+    }
+    
+    .response-counter-number { 
+      font-size: 2rem; 
+      font-weight: 700; 
+      color: #0d0d0d; 
+    }
+    
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      .card {
+        padding: 25px 20px;
+      }
+      
+      .code-value {
+        font-size: 3rem;
+        letter-spacing: 10px;
+      }
+      
+      .question-text {
+        font-size: 1.4rem;
+      }
+      
+      .options-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .podium {
+        grid-template-columns: 1fr;
+      }
+      
+      .header {
+        flex-direction: column;
+        gap: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- HEADER -->
+  <div class="header">
+    <img src="assets/logos/fah.png" alt="FAH Marie-Curie" class="logo">
+    <a href="dashboard.html" class="btn-back">
+      ← Retour au tableau de bord
+    </a>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <!-- WAITING SCREEN -->
+      <div id="waiting-screen" class="waiting-screen">
+        <h1>Session quiz en attente</h1>
+        <p class="quiz-title" id="quiz-title">Chargement...</p>
+        
+        <div class="code-display">
+          <div class="code-label">Code de la session</div>
+          <div class="code-value" id="session-code">------</div>
+        </div>
+        
+        <p class="join-url">Les participants peuvent rejoindre sur : <br><strong id="join-url"></strong></p>
+
+        <div id="qrcode"></div>
+
+        <div class="participants-list">
+          <div class="participants-title">Participants connectés (<span id="participant-count">0</span>)</div>
+          <div id="participants-container">
+            <div class="empty-participants">En attente des participants...</div>
+          </div>
+        </div>
+
+        <button class="btn" id="start-btn" disabled>Démarrer le quiz</button>
+      </div>
+
+      <!-- QUESTION SCREEN -->
+      <div id="question-screen" class="question-screen">
+        <div class="question-header">
+          <div class="question-number">Question <span id="current-question">1</span>/<span id="total-questions">10</span></div>
+          <div class="timer" id="timer">30</div>
+        </div>
+      
+        <div class="response-counter" id="response-counter">
+          <span class="response-counter-number" id="response-count">0</span> / <span id="total-participants">0</span> réponses
+        </div>
+      
+        <div class="question-text" id="question-text"></div>
+
+        <div class="options-grid" id="options-grid"></div>
+
+        <div class="response-stats" id="response-stats" style="display:none;"></div>
+
+        <div class="leaderboard" id="leaderboard" style="display:none;">
+          <div class="leaderboard-title">🏆 Top 3</div>
+          <div class="podium" id="podium"></div>
+        </div>
+
+        <button class="btn" id="next-btn" style="display:none;">Question suivante</button>
+      </div>
+
+      <!-- RESULTS SCREEN -->
+      <div id="results-screen" class="results-screen">
+        <h1 class="final-title">🎉 Quiz terminé !</h1>
+        
+        <div class="leaderboard">
+          <div class="leaderboard-title">Classement final</div>
+          <div id="final-leaderboard"></div>
+        </div>
+
+        <button class="btn btn-close" id="close-btn">Fermer la session</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://ckfdysasgawyixbxjyfz.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrZmR5c2FzZ2F3eWl4YnhqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5ODg1NjcsImV4cCI6MjA3NzU2NDU2N30.t0ubaRk5sz7kewyEsOg4CpFvj47S9U1J1SP_3DQBmE8";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let sessionId = null;
+    let quizData = null;
+    let currentQuestionIndex = 0;
+    let timerInterval = null;
+    let questionStartTime = null;
+    let participants = [];
+    let answersChannel = null;
+
+    async function init() {
+      const params = new URLSearchParams(window.location.search);
+      sessionId = params.get('session');
+
+      if (!sessionId) {
+        alert('Session invalide');
+        window.location.href = 'dashboard.html';
+        return;
+      }
+
+      await loadSession();
+      subscribeToParticipants();
+      subscribeToAnswers();
+    }
+
+    async function loadSession() {
+      try {
+        const { data: session, error: sessionError } = await supabaseClient
+          .from('live_sessions')
+          .select('*, quizzes(*)')
+          .eq('id', sessionId)
+          .single();
+
+        if (sessionError) throw sessionError;
+
+        const quiz = session.quizzes;
+        quizData = {
+          ...quiz,
+          questions: typeof quiz.questions === 'string' ? JSON.parse(quiz.questions) : quiz.questions
+        };
+
+        document.getElementById('quiz-title').textContent = quizData.title;
+        document.getElementById('session-code').textContent = session.code;
+        document.getElementById('total-questions').textContent = quizData.questions.length;
+
+        const joinUrl = `${window.location.origin}/player.html?code=${session.code}`;
+        document.getElementById('join-url').textContent = joinUrl;
+
+      } catch (err) {
+        console.error('Error loading session:', err);
+        alert('Erreur de chargement: ' + err.message);
+      }
+    }
+
+    function subscribeToParticipants() {
+      supabaseClient
+        .channel('participants')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'session_participants',
+          filter: `session_id=eq.${sessionId}`
+        }, async () => {
+          await loadParticipants();
+        })
+        .subscribe();
+
+      loadParticipants();
+    }
+
+    async function loadParticipants() {
+      const { data, error } = await supabaseClient
+        .from('session_participants')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('joined_at', { ascending: true });
+
+      if (error) {
+        console.error('Error loading participants:', error);
+        return;
+      }
+
+      participants = data || [];
+      document.getElementById('participant-count').textContent = participants.length;
+
+      const container = document.getElementById('participants-container');
+      if (participants.length === 0) {
+        container.innerHTML = '<div class="empty-participants">En attente des participants...</div>';
+      } else {
+        container.innerHTML = participants.map(p => `
+          <div class="participant-item">
+            <span class="participant-name">${escapeHtml(p.nickname)}</span>
+            <span class="participant-score">${p.score} pts</span>
+          </div>
+        `).join('');
+      }
+
+      document.getElementById('start-btn').disabled = participants.length === 0;
+    }
+
+    document.getElementById('start-btn').addEventListener('click', startQuiz);
+
+    async function startQuiz() {
+      await supabaseClient
+        .from('live_sessions')
+        .update({ status: 'active', current_question_index: 0 })
+        .eq('id', sessionId);
+
+      document.getElementById('waiting-screen').style.display = 'none';
+      document.getElementById('question-screen').style.display = 'block';
+
+      showQuestion(0);
+    }
+
+    async function showQuestion(index) {
+      currentQuestionIndex = index;
+      const question = quizData.questions[index];
+    
+      document.getElementById('current-question').textContent = index + 1;
+      document.getElementById('question-text').textContent = question.question;
+      document.getElementById('response-stats').style.display = 'none';
+      document.getElementById('leaderboard').style.display = 'none';
+      document.getElementById('next-btn').style.display = 'none';
+      
+      // Reset et afficher le compteur de réponses
+      document.getElementById('response-count').textContent = '0';
+      document.getElementById('total-participants').textContent = participants.length;
+      document.getElementById('response-counter').style.display = 'block';
+    
+      const optionsGrid = document.getElementById('options-grid');
+      optionsGrid.innerHTML = '';
+      
+      const colors = ['option-a', 'option-b', 'option-c', 'option-d'];
+      question.options.forEach((opt, i) => {
+        const div = document.createElement('div');
+        div.className = `option-box ${colors[i]}`;
+        div.textContent = opt;
+        optionsGrid.appendChild(div);
+      });
+    
+      questionStartTime = Date.now();
+      
+      await supabaseClient
+        .from('live_sessions')
+        .update({ 
+          current_question_index: index,
+          question_start_time: new Date().toISOString()
+        })
+        .eq('id', sessionId);
+    
+      // S'abonner aux réponses en temps réel pour cette question
+      subscribeToCurrentQuestionAnswers();
+    
+      startTimer(question.timeLimit || 30);
+    }
+    
+    function startTimer(seconds) {
+      let timeLeft = seconds;
+      const timerEl = document.getElementById('timer');
+      timerEl.textContent = timeLeft;
+      timerEl.classList.remove('warning');
+
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerEl.textContent = timeLeft;
+
+        if (timeLeft <= 5) {
+          timerEl.classList.add('warning');
+        }
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          showResults();
+        }
+      }, 1000);
+    }
+
+    function subscribeToAnswers() {
+      supabaseClient
+        .channel('answers')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'participant_answers',
+          filter: `session_id=eq.${sessionId}`
+        }, () => {
+          // Real-time update could be added here
+        })
+        .subscribe();
+    }
+
+    function subscribeToCurrentQuestionAnswers() {
+      // Se désabonner du canal précédent s'il existe
+      if (answersChannel) {
+        supabaseClient.removeChannel(answersChannel);
+      }
+    
+      // Créer un nouveau canal pour cette question
+      answersChannel = supabaseClient
+        .channel(`answers-q${currentQuestionIndex}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'participant_answers',
+          filter: `session_id=eq.${sessionId}`
+        }, async (payload) => {
+          // Vérifier que c'est bien pour la question actuelle
+          if (payload.new.question_index === currentQuestionIndex) {
+            await updateResponseCounter();
+          }
+        })
+        .subscribe();
+    
+      // Charger le compteur initial
+      updateResponseCounter();
+    }
+    
+    async function updateResponseCounter() {
+      const { data: answers, error } = await supabaseClient
+        .from('participant_answers')
+        .select('id')
+        .eq('session_id', sessionId)
+        .eq('question_index', currentQuestionIndex);
+    
+      if (!error && answers) {
+        document.getElementById('response-count').textContent = answers.length;
+      }
+    }
+
+    async function showResults() {
+      clearInterval(timerInterval);
+
+      // Se désabonner du canal des réponses
+      if (answersChannel) {
+        supabaseClient.removeChannel(answersChannel);
+      }
+    
+      // Cacher le compteur de réponses
+      document.getElementById('response-counter').style.display = 'none';
+    
+      // Afficher un écran de chargement
+      const questionText = document.getElementById('question-text');
+      questionText.innerHTML = '<div style="text-align: center; color: #667eea;"><div class="spinner"></div><p style="font-size: 1.2rem; margin-top: 15px;">Analyse des réponses en cours...</p></div>';
+    
+      // Attendre 2.5 secondes pour recevoir toutes les réponses
+      await new Promise(resolve => setTimeout(resolve, 2500));
+    
+      const question = quizData.questions[currentQuestionIndex];
+
+      // Remettre le texte de la question
+      questionText.textContent = question.question;
+      
+      // Get all answers for this question
+      const { data: answers } = await supabaseClient
+        .from('participant_answers')
+        .select('*')
+        .eq('session_id', sessionId)
+        .eq('question_index', currentQuestionIndex);
+
+      // Calculate statistics
+      const stats = question.options.map((_, i) => {
+        const count = answers?.filter(a => a.answer_index === i).length || 0;
+        const percentage = answers?.length ? Math.round((count / answers.length) * 100) : 0;
+        return { count, percentage };
+      });
+
+      // Show stats
+      const statsContainer = document.getElementById('response-stats');
+      statsContainer.style.display = 'block';
+      statsContainer.innerHTML = question.options.map((opt, i) => `
+        <div class="stat-bar">
+          <div class="stat-label">
+            <span>${opt}</span>
+            <span>${stats[i].percentage}% (${stats[i].count})</span>
+          </div>
+          <div class="stat-progress">
+            <div class="stat-fill" style="width: ${stats[i].percentage}%"></div>
+          </div>
+        </div>
+      `).join('');
+
+      // Highlight correct answer
+      const optionsBoxes = document.querySelectorAll('.option-box');
+      optionsBoxes[question.correctIndex].classList.add('correct');
+
+      // Update leaderboard
+      await updateScores();
+      await showLeaderboard();
+
+      // Show next button
+      document.getElementById('next-btn').style.display = 'block';
+    }
+
+    async function updateScores() {
+      const question = quizData.questions[currentQuestionIndex];
+      const maxTime = (question.timeLimit || 30) * 1000; // en millisecondes
+    
+      // IMPORTANT: Sélectionner TOUTES les colonnes, y compris created_at
+      const { data: answers, error: answersError } = await supabaseClient
+        .from('participant_answers')
+        .select('*')
+        .eq('session_id', sessionId)
+        .eq('question_index', currentQuestionIndex);
+    
+      if (answersError) {
+        console.error('Error fetching answers:', answersError);
+        return;
+      }
+    
+      if (!answers || answers.length === 0) {
+        console.log('No answers found for this question');
+        return;
+      }
+    
+      console.log('Fetched answers:', answers);
+      console.log('First answer object:', JSON.stringify(answers[0], null, 2));
+      console.log('First answer keys:', Object.keys(answers[0]));
+    
+      // Récupérer le temps de début de la question depuis la session
+      const { data: session } = await supabaseClient
+        .from('live_sessions')
+        .select('question_start_time')
+        .eq('id', sessionId)
+        .single();
+      
+      // Convertir en UTC pour éviter les problèmes de fuseau horaire
+      const questionStartTime = new Date(session.question_start_time).getTime();
+      
+      for (const answer of answers) {
+        console.log('=== DEBUG ANSWER ===');
+        console.log('Answer created_at:', answer.created_at);
+        console.log('Question start time:', session.question_start_time);
+        
+        if (answer.answer_index === question.correctIndex) {
+          // Calculer le temps de réponse
+          const answerTime = new Date(answer.created_at).getTime();
+          const rawResponseTime = answerTime - questionStartTime;
+          
+          // Correction du décalage UTC (soustraire 1 heure = 3600000 ms)
+          const actualResponseTime = rawResponseTime - 3600000;
+          
+          console.log('=== CALCUL DÉTAILLÉ ===');
+          console.log('Answer created_at STRING:', answer.created_at);
+          console.log('Question start STRING:', session.question_start_time);
+          console.log('Answer time (ms):', answerTime);
+          console.log('Question start (ms):', questionStartTime);
+          console.log('Actual response time:', actualResponseTime, 'ms');
+          console.log('Actual response time (seconds):', (actualResponseTime / 1000).toFixed(2), 's');
+          console.log('Max time:', maxTime, 'ms');
+          console.log('Max time (seconds):', (maxTime / 1000).toFixed(2), 's');
+          
+          // Vérifier si le temps est valide
+          console.log('Time is positive?', actualResponseTime > 0);
+          console.log('Time is within limit?', actualResponseTime <= maxTime);
+          
+          // Sécurité : si le temps est négatif ou trop grand, utiliser un temps par défaut
+          const validResponseTime = (actualResponseTime > 0 && actualResponseTime <= maxTime) 
+            ? actualResponseTime 
+            : maxTime;
+          
+          console.log('Valid response time used:', validResponseTime, 'ms');
+          console.log('Valid response time (seconds):', (validResponseTime / 1000).toFixed(2), 's');
+          
+          // Décroissance linéaire : 1000 points si instantané, 100 points à la fin
+          const timeRatio = validResponseTime / maxTime;
+          console.log('Time ratio (before min):', timeRatio);
+          console.log('Time ratio (after min):', Math.min(1, timeRatio));
+          
+          // Plus le temps est proche de 0, plus on a de points
+          // timeRatio = 0 (instantané) → points = 1000
+          // timeRatio = 1 (temps max) → points = 100
+          const points = Math.round(1000 - (900 * Math.min(1, timeRatio)));
+          console.log('Points calculés:', points);
+          console.log('===================');
+    
+          // Récupérer le score actuel du participant
+          const { data: participant } = await supabaseClient
+            .from('session_participants')
+            .select('score')
+            .eq('id', answer.participant_id)
+            .single();
+    
+          // Mettre à jour avec le score cumulé
+          const newScore = (participant?.score || 0) + points;
+          
+          await supabaseClient
+            .from('session_participants')
+            .update({ score: newScore })
+            .eq('id', answer.participant_id);
+    
+          // Mettre à jour la réponse avec les informations
+          await supabaseClient
+            .from('participant_answers')
+            .update({ 
+              is_correct: true, 
+              points_earned: points 
+            })
+            .eq('id', answer.id);
+        } else {
+          // Mauvaise réponse
+          await supabaseClient
+            .from('participant_answers')
+            .update({ 
+              is_correct: false, 
+              points_earned: 0 
+            })
+            .eq('id', answer.id);
+        }
+      }
+    
+      await loadParticipants();
+    }
+
+    async function showLeaderboard() {
+      const { data: topParticipants } = await supabaseClient
+        .from('session_participants')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('score', { ascending: false })
+        .limit(3);
+
+      if (!topParticipants || topParticipants.length === 0) return;
+
+      const podium = document.getElementById('podium');
+      const ranks = ['rank-1', 'rank-2', 'rank-3'];
+      const medals = ['🥇', '🥈', '🥉'];
+
+      podium.innerHTML = topParticipants.map((p, i) => `
+        <div class="podium-item">
+          <div class="podium-rank ${ranks[i]}">${medals[i]}</div>
+          <div class="podium-name">${escapeHtml(p.nickname)}</div>
+          <div class="podium-score">${p.score} pts</div>
+        </div>
+      `).join('');
+
+      document.getElementById('leaderboard').style.display = 'block';
+    }
+
+    document.getElementById('next-btn').addEventListener('click', () => {
+      if (currentQuestionIndex < quizData.questions.length - 1) {
+        showQuestion(currentQuestionIndex + 1);
+      } else {
+        showFinalResults();
+      }
+    });
+
+    async function showFinalResults() {
+      await supabaseClient
+        .from('live_sessions')
+        .update({ status: 'finished' })
+        .eq('id', sessionId);
+
+      document.getElementById('question-screen').style.display = 'none';
+      document.getElementById('results-screen').style.display = 'block';
+
+      const { data: finalParticipants } = await supabaseClient
+        .from('session_participants')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('score', { ascending: false });
+
+      const finalLeaderboard = document.getElementById('final-leaderboard');
+      finalLeaderboard.innerHTML = finalParticipants?.map((p, i) => `
+        <div class="participant-item" style="font-size: 1.1rem;">
+          <span style="font-weight: 700;">#${i + 1}</span>
+          <span class="participant-name">${escapeHtml(p.nickname)}</span>
+          <span class="participant-score">${p.score} pts</span>
+        </div>
+      `).join('') || '';
+    }
+
+    document.getElementById('close-btn').addEventListener('click', async () => {
+      await supabaseClient.from('live_sessions').delete().eq('id', sessionId);
+      window.location.href = 'dashboard.html';
+    });
+
+    function escapeHtml(unsafe) {
+      if (!unsafe) return '';
+      return String(unsafe).replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      })[m]);
+    }
+
+    init();
+  </script>
+</body>
+</html>

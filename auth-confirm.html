@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirmation - FAH Marie-Curie</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Stack+Sans+Headline:wght@200..700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    .container {
+      text-align: center;
+      background: white;
+      padding: 48px 32px;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+      max-width: 400px;
+      width: 90%;
+    }
+
+    .logo {
+      margin-bottom: 32px;
+    }
+
+    .logo img {
+      height: 50px;
+      width: auto;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #e5e5e5;
+      border-top-color: #FBE01D;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 24px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      color: #0d0d0d;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    p {
+      color: #666;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .error-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 24px;
+      color: #c33;
+    }
+
+    .back-link {
+      margin-top: 24px;
+    }
+
+    .back-link a {
+      color: #666;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s ease;
+    }
+
+    .back-link a:hover {
+      color: #0d0d0d;
+    }
+
+    .debug {
+      margin-top: 24px;
+      padding: 16px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      text-align: left;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .debug pre {
+      margin: 4px 0;
+      word-break: break-all;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <img src="assets/logos/fah.png" alt="FAH Marie-Curie" />
+    </div>
+
+    <div id="loading-state">
+      <div class="spinner"></div>
+      <h1>Vérification en cours...</h1>
+      <p>Veuillez patienter pendant que nous validons votre lien.</p>
+    </div>
+
+    <div id="error-state" style="display: none;">
+      <svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="15" y1="9" x2="9" y2="15"></line>
+        <line x1="9" y1="9" x2="15" y2="15"></line>
+      </svg>
+      <h1>Lien invalide</h1>
+      <p id="error-message">Le lien est invalide ou a expiré.</p>
+      <div class="back-link">
+        <a href="login.html">← Retour à la connexion</a>
+      </div>
+    </div>
+
+    <div id="debug" class="debug"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://ckfdysasgawyixbxjyfz.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrZmR5c2FzZ2F3eWl4YnhqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5ODg1NjcsImV4cCI6MjA3NzU2NDU2N30.t0ubaRk5sz7kewyEsOg4CpFvj47S9U1J1SP_3DQBmE8";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const loadingState = document.getElementById('loading-state');
+    const errorState = document.getElementById('error-state');
+    const errorMessage = document.getElementById('error-message');
+    const debugDiv = document.getElementById('debug');
+
+    function addDebug(text) {
+      console.log(text);
+      debugDiv.style.display = 'block';
+      debugDiv.innerHTML += '<pre>' + text + '</pre>';
+    }
+
+    function showError(message) {
+      loadingState.style.display = 'none';
+      errorState.style.display = 'block';
+      errorMessage.textContent = message;
+    }
+
+    async function confirmAuth() {
+      try {
+        addDebug('🔍 URL: ' + window.location.href);
+
+        // Récupérer les paramètres de l'URL
+        const params = new URLSearchParams(window.location.search);
+        const token_hash = params.get('token_hash');
+        const type = params.get('type');
+        
+        addDebug('📋 Type: ' + type);
+        addDebug('🔑 Token hash présent: ' + (token_hash ? 'Oui (longueur: ' + token_hash.length + ')' : 'Non'));
+
+        if (!token_hash) {
+          addDebug('❌ Pas de token_hash dans l\'URL');
+          showError('Lien invalide : aucun token trouvé.');
+          return;
+        }
+
+        if (!type) {
+          addDebug('❌ Pas de type dans l\'URL');
+          showError('Lien invalide : type manquant.');
+          return;
+        }
+
+        addDebug('📡 Appel de verifyOtp...');
+
+        // Vérifier le token avec Supabase
+        const { data, error } = await supabaseClient.auth.verifyOtp({
+          token_hash: token_hash,
+          type: type
+        });
+
+        if (error) {
+          addDebug('❌ Erreur verifyOtp: ' + error.message);
+          console.error('Erreur de vérification:', error);
+          showError('Impossible de valider le lien : ' + error.message);
+          return;
+        }
+
+        if (!data || !data.session) {
+          addDebug('❌ Pas de session créée');
+          showError('Impossible de créer la session.');
+          return;
+        }
+
+        addDebug('✅ Session créée avec succès!');
+        addDebug('👤 User: ' + data.user.email);
+        addDebug('🔄 Redirection vers la page appropriée...');
+
+        // Rediriger vers la bonne page selon le type
+        if (type === 'recovery') {
+          addDebug('➡️ Redirection vers reset-password.html');
+          window.location.href = '/reset-password.html';
+        } else if (type === 'invite' || type === 'signup') {
+          addDebug('➡️ Redirection vers set-password.html');
+          window.location.href = '/set-password.html';
+        } else if (type === 'email') {
+          addDebug('➡️ Redirection vers dashboard.html');
+          window.location.href = '/dashboard.html';
+        } else {
+          addDebug('⚠️ Type inconnu: ' + type + ', redirection vers login');
+          window.location.href = '/login.html';
+        }
+
+      } catch (err) {
+        addDebug('💥 Erreur inattendue: ' + err.message);
+        console.error('Erreur:', err);
+        showError('Une erreur inattendue est survenue : ' + err.message);
+      }
+    }
+
+    // Démarrer la confirmation au chargement de la page
+    confirmAuth();
+  </script>
+</body>
+</html>

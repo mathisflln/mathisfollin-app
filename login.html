@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>FAH Marie-Curie</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Stack+Sans+Headline:wght@200..700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Over+the+Rainbow&display=swap" rel="stylesheet">
+    
+    <!-- CSS - UN SEUL FICHIER QUI IMPORTE TOUT -->
+    <link rel="stylesheet" href="css/main.css">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Stack Sans Headline", sans-serif;
+      background-image: url('assets/images/background.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100vw;
+    }
+
+    .logo {
+      position: absolute;
+      top: 30px;
+      left: 40px;
+    }
+
+    .logo img {
+      height: 50px;
+      width: auto;
+    }
+
+    .login-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 400px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 600;
+      color: #0d0d0d;
+      margin-bottom: 32px;
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    input[type="email"],
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid #d0d0d0;
+      border-radius: 8px;
+      font-family: "Stack Sans Headline", sans-serif;
+      font-weight: 300;
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+      background: #ffffff;
+    }
+
+    input[type="email"]:focus,
+    input[type="password"]:focus,
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #0d0d0d;
+    }
+
+    input[type="email"]:-webkit-autofill,
+    input[type="password"]:-webkit-autofill,
+    input[type="text"]:-webkit-autofill {
+      -webkit-box-shadow: 0 0 0 30px white inset !important;
+      -webkit-text-fill-color: #0d0d0d !important;
+    }
+
+    .password-wrapper {
+      position: relative;
+    }
+
+    .toggle-password {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+      transition: color 0.2s ease;
+    }
+
+    .toggle-password:hover {
+      color: #0d0d0d;
+    }
+
+    .toggle-password svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 14px 24px;
+      background: #0d0d0d;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-family: "Stack Sans Headline", sans-serif;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 8px;
+    }
+
+    .btn-submit:hover {
+      background: #2d2d2d;
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 0.8s linear infinite;
+      margin-left: 8px;
+      vertical-align: middle;
+      display: none;
+    }
+
+    .btn-submit.loading .loading-spinner {
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .subtitle {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 0.875rem;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    #error-message {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: #fee;
+      border: 1px solid #fcc;
+      border-radius: 8px;
+      color: #c33;
+      font-size: 0.875rem;
+      text-align: center;
+      display: none;
+    }
+
+    #error-message.show {
+      display: block;
+    }
+
+    @media (max-width: 768px) {
+      .logo {
+        top: 20px;
+        left: 20px;
+      }
+
+      .logo img {
+        height: 40px;
+      }
+
+      h1 {
+        font-size: 1.75rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a href="index.html" class="logo">
+    <img src="assets/logos/fah.png" alt="FAH Marie-Curie" />
+  </a>
+
+  <div class="login-wrapper">
+    <div class="login-container">
+      <h1>Espace membre</h1>
+      
+      <form id="login-form">
+        <div class="form-group">
+          <input 
+            type="email" 
+            id="email" 
+            placeholder="Email" 
+            required 
+            autocomplete="email"
+          />
+        </div>
+        
+        <div class="form-group">
+          <div class="password-wrapper">
+            <input 
+              type="password" 
+              id="password" 
+              placeholder="Mot de passe" 
+              required 
+              autocomplete="current-password"
+            />
+            <button type="button" class="toggle-password" id="toggle-password" aria-label="Afficher le mot de passe">
+              <svg id="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+              <svg id="eye-open" style="display: none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <button type="submit" class="btn-submit" id="submit-btn">
+          Se connecter
+          <span class="loading-spinner"></span>
+        </button>
+      </form>
+      
+      <p id="error-message"></p>
+      
+      <p class="subtitle">
+        Espace réservé aux membres de l'association. <br>Pour tout problème, merci de nous contacter.<br>
+      </p>
+      <p style="text-align: center; margin-top: 20px; font-size: 0.875rem;">
+        <a href="#" id="forgot-password" style="color: #666; text-decoration: none; transition: color 0.2s;">Mot de passe oublié ?</a>
+      </p>
+    </div>
+  </div>
+
+  <img src="assets/images/sticker-black.png" alt="sticker écouter sans juger" class="floating-img img1 float-left">
+  <img src="assets/images/sticker-fah.png" alt="sticker FAH" class="floating-img img2 float-right">
+  <img src="assets/images/message1.svg" alt="message" class="floating-img img3 float-left">
+  <img src="assets/images/scrapbook.png" alt="scrapbook" class="floating-img img4 float-right">
+  <img src="assets/images/message2.svg" alt="message" class="floating-img img5 float-down">
+  <img src="assets/images/message3.svg" alt="message" class="floating-img img6 float-right">
+  <img src="assets/images/postit1.svg" alt="post-it" class="floating-img img7 float-left">
+  <img src="assets/images/paper.png" alt="papier" class="floating-img img8 float-right">
+  <img src="assets/images/scotch.png" alt="scotch" class="floating-img img9 float-right">
+
+  <script>
+    const SUPABASE_URL = "https://ckfdysasgawyixbxjyfz.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrZmR5c2FzZ2F3eWl4YnhqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5ODg1NjcsImV4cCI6MjA3NzU2NDU2N30.t0ubaRk5sz7kewyEsOg4CpFvj47S9U1J1SP_3DQBmE8";
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const form = document.getElementById('login-form');
+    const errorMsg = document.getElementById('error-message');
+    const submitBtn = document.getElementById('submit-btn');
+    const togglePassword = document.getElementById('toggle-password');
+    const passwordInput = document.getElementById('password');
+    const eyeClosed = document.getElementById('eye-closed');
+    const eyeOpen = document.getElementById('eye-open');
+
+    // Toggle password visibility
+    togglePassword.addEventListener('click', () => {
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+      
+      if (type === 'text') {
+        eyeClosed.style.display = 'none';
+        eyeOpen.style.display = 'block';
+      } else {
+        eyeClosed.style.display = 'block';
+        eyeOpen.style.display = 'none';
+      }
+    });
+
+    // Vérifier si déjà connecté
+    async function checkExistingSession() {
+      const { data } = await supabaseClient.auth.getUser();
+      if (data.user) {
+        window.location.href = "dashboard.html";
+      }
+    }
+
+    checkExistingSession();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      errorMsg.classList.remove('show');
+      errorMsg.textContent = '';
+      
+      submitBtn.disabled = true;
+      submitBtn.classList.add('loading');
+      
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ 
+          email, 
+          password 
+        });
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data.user) {
+          window.location.href = "dashboard.html";
+        }
+      } catch (error) {
+        console.error('Erreur de connexion:', error);
+        
+        let errorMessage = "Une erreur est survenue. Veuillez réessayer.";
+        
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = "Identifiants incorrects.";
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = "Veuillez confirmer votre adresse email.";
+        } else if (error.message.includes('Network')) {
+          errorMessage = "Problème de connexion internet.";
+        }
+        
+        errorMsg.textContent = errorMessage;
+        errorMsg.classList.add('show');
+        
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('loading');
+      }
+    });
+
+    // Nettoyer le message d'erreur
+    document.getElementById('email').addEventListener('input', () => {
+      errorMsg.classList.remove('show');
+    });
+    
+    document.getElementById('password').addEventListener('input', () => {
+      errorMsg.classList.remove('show');
+    });
+    // Mot de passe oublié
+    document.getElementById('forgot-password').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const email = prompt("Entrez votre adresse email pour réinitialiser votre mot de passe :");
+  
+      if (email && email.trim()) {
+        try {
+          const { error } = await supabaseClient.auth.resetPasswordForEmail(email.trim(), {
+            redirectTo: 'https://fah-web.vercel.app/FAH_website/reset-password.html'
+          });
+      
+        if (error) throw error;
+      
+        alert("✓ Un email de réinitialisation a été envoyé à " + email);
+      } catch (error) {
+        alert("Erreur : " + error.message);
+        } 
+      }
+    });
+  </script>
+</body>
+</html>
