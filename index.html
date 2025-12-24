@@ -11,6 +11,43 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: "Stack Sans Headline", sans-serif; background: #f8f9fa; min-height: 100vh; }
+
+    /* LOADER AUTH */
+    .auth-loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #f8f9fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 1;
+      transition: opacity 0.3s ease;
+    }
+    .auth-loader.hide {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .auth-loader .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #e5e5e5;
+      border-top-color: #0d0d0d;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Cacher contenu pendant vérification */
+    body.auth-checking .sidebar,
+    body.auth-checking .main-content {
+      opacity: 0;
+    }
     
     /* SIDEBAR */
     .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 280px; background: #ffffff; border-right: 1px solid #e5e5e5; display: flex; flex-direction: column; z-index: 100; }
@@ -136,6 +173,12 @@
   </style>
 </head>
 <body>
+  <body class="auth-checking">
+  <!-- Loader auth -->
+  <div class="auth-loader" id="auth-loader">
+    <div class="spinner"></div>
+  </div>
+
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sidebar-header">
@@ -362,6 +405,10 @@
           window.location.href = "login.html";
           return;
         }
+        
+        // Auth OK - afficher le contenu
+        document.body.classList.remove('auth-checking');
+        document.getElementById('auth-loader').classList.add('hide');
 
         currentUserId = data.user.id;
         const email = data.user.email || '';
