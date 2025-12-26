@@ -190,5 +190,77 @@ function initModals() {
   });
 }
 
+// Skeleton pour les quiz
+function showSkeletonQuiz(container, count = 6) {
+  container.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const skeleton = document.createElement('div');
+    skeleton.className = 'quiz-card skeleton';
+    skeleton.innerHTML = `
+      <div class="quiz-header">
+        <div class="skeleton-box"></div>
+        <div class="quiz-info" style="flex: 1;">
+          <div class="skeleton-line" style="width: 70%;"></div>
+          <div class="skeleton-line" style="width: 50%; height: 12px;"></div>
+        </div>
+      </div>
+    `;
+    container.appendChild(skeleton);
+  }
+}
+
+// Skeleton pour les documents
+function showSkeletonDocuments(container, count = 6) {
+  container.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const skeleton = document.createElement('div');
+    skeleton.className = 'document-card skeleton';
+    skeleton.innerHTML = `
+      <div class="document-header">
+        <div class="skeleton-icon"></div>
+        <div class="document-info" style="flex: 1;">
+          <div class="skeleton-line" style="width: 75%;"></div>
+          <div class="skeleton-line" style="width: 40%; height: 12px;"></div>
+        </div>
+      </div>
+      <div class="document-footer">
+        <div class="skeleton-line" style="width: 60px; height: 24px;"></div>
+        <div class="skeleton-line" style="width: 28px; height: 28px; border-radius: 6px;"></div>
+      </div>
+    `;
+    container.appendChild(skeleton);
+  }
+}
+
+// Tous les quiz (avec skeleton)
+async function loadAllQuiz() {
+  const container = document.getElementById('all-quiz');
+  
+  // Afficher skeleton
+  showSkeletonQuiz(container, 8);
+  
+  const { data: quizzes } = await supabaseClient
+    .from('quizzes')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (quizzes) renderQuiz(container, quizzes, showQuizModal);
+}
+
+// Tous les documents (avec skeleton)
+async function loadAllDocuments() {
+  const container = document.getElementById('all-docs');
+  
+  // Afficher skeleton
+  showSkeletonDocuments(container, 8);
+  
+  const { data: docs } = await supabaseClient
+    .from('documents_meta')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (docs) await renderDocuments(container, docs);
+}
+
 // Démarrer l'application
 initDashboard();

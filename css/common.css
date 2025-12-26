@@ -149,6 +149,57 @@ body.auth-checking .main-content {
 .view-section { display: none; }
 .view-section.active { display: block; }
 
+
+/* Skeleton loading */
+.skeleton {
+  pointer-events: none;
+  user-select: none;
+}
+
+.skeleton-box {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 8px;
+  width: 48px;
+  height: 48px;
+}
+
+.skeleton-line {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 4px;
+  height: 16px;
+  margin-bottom: 8px;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Skeleton pour les cartes quiz */
+.quiz-card.skeleton {
+  background: #f8f9fa;
+  border: 1px solid transparent;
+}
+
+/* Skeleton pour les cartes documents */
+.document-card.skeleton {
+  background: #f8f9fa;
+  border: 1px solid transparent;
+}
+
+.document-card.skeleton .skeleton-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
 /* RESPONSIVE */
 @media (max-width: 1200px) {
     .dashboard-layout { grid-template-columns: 1fr; }
