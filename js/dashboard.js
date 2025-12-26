@@ -48,16 +48,6 @@ async function loadDashboardDocuments() {
   if (docs) await renderDocuments(document.getElementById('dashboard-docs'), docs);
 }
 
-// Tous les documents
-async function loadAllDocuments() {
-  const { data: docs } = await supabaseClient
-    .from('documents_meta')
-    .select('*')
-    .order('created_at', { ascending: false });
-  
-  if (docs) await renderDocuments(document.getElementById('all-docs'), docs);
-}
-
 // Quiz du dashboard
 async function loadDashboardQuiz() {
   const { data: quizzes } = await supabaseClient
@@ -67,16 +57,6 @@ async function loadDashboardQuiz() {
     .limit(4);
   
   if (quizzes) renderQuiz(document.getElementById('dashboard-quiz'), quizzes, showQuizModal);
-}
-
-// Tous les quiz
-async function loadAllQuiz() {
-  const { data: quizzes } = await supabaseClient
-    .from('quizzes')
-    .select('*')
-    .order('created_at', { ascending: false });
-  
-  if (quizzes) renderQuiz(document.getElementById('all-quiz'), quizzes, showQuizModal);
 }
 
 // Événements
