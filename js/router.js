@@ -26,17 +26,25 @@ class Router {
   }
 
   navigateTo(path) {
+    // Si c'est la route dashboard, utiliser "/" au lieu de "/dashboard"
+    if (path === '/dashboard') {
+      path = '/';
+    }
+    
     // Changer l'URL sans recharger la page
     history.pushState(null, '', path);
     this.handleRoute(path);
   }
 
   handleRoute(path) {
-    // Normaliser le path
-    if (path === '/') path = '/dashboard';
+    // Normaliser : "/" = dashboard, sinon garder le path tel quel
+    let routePath = path;
+    if (path === '/' || path === '') {
+      routePath = '/dashboard';
+    }
     
     // Trouver la route correspondante
-    const route = this.routes[path] || this.routes['/dashboard'];
+    const route = this.routes[routePath] || this.routes['/dashboard'];
     
     // Cacher toutes les vues
     document.querySelectorAll('.view-section').forEach(v => 
@@ -54,8 +62,8 @@ class Router {
       viewElement.classList.add('active');
     }
     
-    // Activer le bon nav item
-    const activeNav = document.querySelector(`[data-route="${path}"]`);
+    // Activer le bon nav item (utiliser le routePath pour matcher)
+    const activeNav = document.querySelector(`[data-route="${routePath === '/dashboard' ? '/dashboard' : path}"]`);
     if (activeNav) {
       activeNav.classList.add('active');
     }
