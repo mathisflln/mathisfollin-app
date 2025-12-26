@@ -7,173 +7,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Stack+Sans+Headline:wght@200..700&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: "Stack Sans Headline", sans-serif; background: #f8f9fa; min-height: 100vh; }
-
-    /* LOADER AUTH */
-    .auth-loader {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: #f8f9fa;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      opacity: 1;
-      transition: opacity 0.3s ease;
-    }
-    .auth-loader.hide {
-      opacity: 0;
-      pointer-events: none;
-    }
-    .auth-loader .spinner {
-      width: 48px;
-      height: 48px;
-      border: 4px solid #e5e5e5;
-      border-top-color: #0d0d0d;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    /* Cacher contenu pendant vérification */
-    body.auth-checking .sidebar,
-    body.auth-checking .main-content {
-      opacity: 0;
-    }
-    
-    /* SIDEBAR */
-    .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 280px; background: #ffffff; border-right: 1px solid #e5e5e5; display: flex; flex-direction: column; z-index: 100; }
-    .sidebar-header { padding: 24px; border-bottom: 1px solid #e5e5e5; }
-    .sidebar-logo { display: flex; align-items: center; text-decoration: none; }
-    .sidebar-logo img { height: 40px; width: auto; }
-    .sidebar-nav { flex: 1; padding: 16px; overflow-y: auto; }
-    .nav-section { margin-bottom: 32px; }
-    .nav-section-title { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #999; margin-bottom: 8px; padding: 0 12px; letter-spacing: 0.5px; }
-    .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-bottom: 4px; border-radius: 8px; color: #666; text-decoration: none; font-size: 0.9rem; transition: all 0.2s ease; cursor: pointer; }
-    .nav-item:hover { background: #f8f9fa; color: #0d0d0d; }
-    .nav-item.active { background: #0d0d0d; color: #ffffff; }
-    .nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
-    .sidebar-footer { padding: 16px; border-top: 1px solid #e5e5e5; }
-    .user-info { display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin-bottom: 8px; }
-    .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #FFFF10 0%, #fff4a4 100%); display: flex; align-items: center; justify-content: center; font-weight: 600; color: #0d0d0d; font-size: 0.9rem; }
-    .user-details { flex: 1; min-width: 0; }
-    .user-name { font-size: 0.9rem; font-weight: 500; color: #0d0d0d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .user-role { font-size: 0.75rem; color: #999; }
-    .btn-logout { width: 100%; padding: 10px 12px; background: transparent; border: 1px solid #e5e5e5; border-radius: 8px; color: #666; font-family: "Stack Sans Headline", sans-serif; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .btn-logout:hover { background: #fee; border-color: #fcc; color: #c33; }
-    .btn-logout svg { width: 16px; height: 16px; }
-    
-    /* MAIN CONTENT */
-    .main-content { margin-left: 280px; padding: 32px; min-height: 100vh; }
-    .page-header { margin-bottom: 32px; }
-    .page-title { font-size: 2rem; font-weight: 600; color: #0d0d0d; margin-bottom: 8px; }
-    .page-subtitle { font-size: 1rem; color: #666; font-weight: 300; }
-    
-    /* LAYOUT 2 COLONNES */
-    .dashboard-layout { display: grid; grid-template-columns: 1fr 350px; gap: 24px; }
-    .main-column { display: flex; flex-direction: column; gap: 24px; }
-    .sidebar-column { display: flex; flex-direction: column; gap: 24px; }
-    
-    /* STATS */
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
-    .stat-card { background: #ffffff; border-radius: 12px; padding: 24px; border: 1px solid #e5e5e5; transition: all 0.2s ease; }
-    .stat-card:hover { border-color: #FBE01D; box-shadow: 0 4px 12px rgba(251, 224, 29, 0.15); }
-    .stat-icon { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #FFFF10 0%, #fff4a4 100%); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
-    .stat-icon svg { width: 20px; height: 20px; color: #0d0d0d; }
-    .stat-value { font-size: 1.75rem; font-weight: 600; color: #0d0d0d; margin-bottom: 4px; }
-    .stat-label { font-size: 0.875rem; color: #666; }
-    
-    /* CONTENT SECTIONS */
-    .content-section { background: #ffffff; border-radius: 12px; padding: 24px; border: 1px solid #e5e5e5; }
-    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-    .section-title { font-size: 1.25rem; font-weight: 600; color: #0d0d0d; }
-    .btn-view-all { font-size: 0.875rem; color: #666; text-decoration: none; transition: color 0.2s ease; cursor: pointer; }
-    .btn-view-all:hover { color: #0d0d0d; }
-    
-    /* DOCUMENTS */
-    .document-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-    .document-card { background: #f8f9fa; border-radius: 10px; padding: 20px; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent; }
-    .document-card:hover { background: #ffffff; border-color: #e5e5e5; transform: translateY(-2px); }
-    .document-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
-    .document-icon { width: 36px; height: 36px; border-radius: 8px; background: #ffffff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .document-icon svg { width: 18px; height: 18px; color: #0d0d0d; }
-    .document-info { flex: 1; min-width: 0; }
-    .document-title { font-size: 0.95rem; font-weight: 500; color: #0d0d0d; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .document-meta { font-size: 0.8rem; color: #999; }
-    .document-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e5e5; }
-    .document-type { font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; background: #e5e5e5; color: #666; font-weight: 500; }
-    .document-actions { display: flex; gap: 8px; }
-    .action-btn { width: 28px; height: 28px; border-radius: 6px; background: transparent; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; color: #666; }
-    .action-btn:hover { background: #e5e5e5; color: #0d0d0d; }
-    .action-btn svg { width: 16px; height: 16px; }
-    
-    /* QUIZ */
-    .quiz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-    .quiz-card { background: #f8f9fa; border-radius: 10px; padding: 20px; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent; }
-    .quiz-card:hover { background: #ffffff; border-color: #e5e5e5; transform: translateY(-2px); }
-    .quiz-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
-    .quiz-icon { width: 48px; height: 48px; border-radius: 10px; background: linear-gradient(135deg, #FFFF10 0%, #fff4a4 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .quiz-icon svg { width: 24px; height: 24px; color: #0d0d0d; }
-    .quiz-info { flex: 1; min-width: 0; }
-    .quiz-title { font-size: 1rem; font-weight: 500; color: #0d0d0d; margin-bottom: 4px; }
-    .quiz-meta { display: flex; gap: 16px; font-size: 0.8rem; color: #999; margin-top: 8px; }
-    
-    /* ÉVÉNEMENTS */
-    .events-section { background: #ffffff; border-radius: 12px; padding: 24px; border: 1px solid #e5e5e5; }
-    .events-section h3 { font-size: 1.25rem; font-weight: 600; color: #0d0d0d; margin-bottom: 20px; }
-    .event-card { padding: 16px; background: #f8f9fa; border-radius: 10px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s ease; }
-    .event-card:hover { background: #ffffff; border: 1px solid #e5e5e5; }
-    .event-date { font-size: 0.75rem; color: #667eea; font-weight: 600; margin-bottom: 6px; }
-    .event-title { font-size: 0.95rem; font-weight: 500; color: #0d0d0d; margin-bottom: 4px; }
-    .event-location { font-size: 0.8rem; color: #999; display: flex; align-items: center; gap: 4px; }
-    .event-location svg { width: 12px; height: 12px; }
-    .empty-events { text-align: center; padding: 40px 20px; color: #999; font-size: 0.9rem; }
-    
-    /* MODAL QUIZ */
-    .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
-    .modal.active { display: flex; }
-    .modal-content { background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
-    .modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
-    .modal-title { font-size: 1.5rem; font-weight: 600; color: #0d0d0d; }
-    .btn-close-modal { background: none; border: none; cursor: pointer; color: #666; padding: 4px; }
-    .btn-close-modal:hover { color: #0d0d0d; }
-    .quiz-detail { margin-bottom: 16px; }
-    .quiz-detail-label { font-size: 0.875rem; color: #666; margin-bottom: 4px; }
-    .quiz-detail-value { font-size: 1rem; color: #0d0d0d; font-weight: 500; }
-    .quiz-description { font-size: 0.95rem; color: #666; line-height: 1.6; margin-bottom: 24px; }
-    .modal-actions { display: flex; gap: 12px; }
-    .btn-modal { flex: 1; padding: 14px 24px; border-radius: 8px; font-family: inherit; font-size: 0.95rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-    .btn-primary { background: #0d0d0d; color: white; border: none; }
-    .btn-primary:hover { background: #FFFF10; color: black; }
-    .btn-secondary { background: transparent; color: #666; border: 1px solid #e5e5e5; }
-    .btn-secondary:hover { border-color: #0d0d0d; color: #0d0d0d; }
-    
-    /* VUES */
-    .view-section { display: none; }
-    .view-section.active { display: block; }
-    
-    /* RESPONSIVE */
-    @media (max-width: 1200px) {
-      .dashboard-layout { grid-template-columns: 1fr; }
-      .sidebar-column { order: -1; }
-    }
-    
-    @media (max-width: 1024px) {
-      .sidebar { transform: translateX(-280px); transition: transform 0.3s ease; }
-      .main-content { margin-left: 0; }
-    }
-  </style>
+  <link rel="stylesheet" href="/css/common.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
 </head>
-<body>
-  <body class="auth-checking">
+<body class="auth-checking">
   <!-- Loader auth -->
   <div class="auth-loader" id="auth-loader">
     <div class="spinner"></div>
@@ -190,18 +27,18 @@
     <nav class="sidebar-nav">
       <div class="nav-section">
         <div class="nav-section-title">Navigation</div>
-        <div class="nav-item active" data-view="dashboard">
+        <a href="/index.html" class="nav-item" data-page="dashboard">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
           <span>Tableau de bord</span>
-        </div>
-        <div class="nav-item" data-view="documents">
+        </a>
+        <a href="/documents.html" class="nav-item" data-page="documents">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
           <span>Documents</span>
-        </div>
-        <div class="nav-item" data-view="quiz">
+        </a>
+        <a href="/quiz.html" class="nav-item" data-page="quiz">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
           <span>Quiz</span>
-        </div>
+        </a>
       </div>
     </nav>
 
@@ -222,83 +59,58 @@
 
   <!-- MAIN CONTENT -->
   <main class="main-content">
-    <!-- VUE DASHBOARD -->
-    <div id="view-dashboard" class="view-section active">
-      <div class="page-header">
-        <h1 class="page-title">Bienvenue <span id="welcome-name"></span> 👋</h1>
-        <p class="page-subtitle">Voici un aperçu de vos ressources et activités</p>
-      </div>
+    <div class="page-header">
+      <h1 class="page-title">Bienvenue <span id="welcome-name"></span> 👋</h1>
+      <p class="page-subtitle">Voici un aperçu de vos ressources et activités</p>
+    </div>
 
-      <div class="dashboard-layout">
-        <!-- COLONNE PRINCIPALE -->
-        <div class="main-column">
-          <!-- Stats -->
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-              </div>
-              <div class="stat-value" id="stat-docs">—</div>
-              <div class="stat-label">Documents disponibles</div>
+    <div class="dashboard-layout">
+      <!-- COLONNE PRINCIPALE -->
+      <div class="main-column">
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
             </div>
-
-            <div class="stat-card">
-              <div class="stat-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-              </div>
-              <div class="stat-value" id="stat-quizzes">—</div>
-              <div class="stat-label">Quiz disponibles</div>
-            </div>
+            <div class="stat-value" id="stat-docs">—</div>
+            <div class="stat-label">Documents disponibles</div>
           </div>
 
-          <!-- Documents récents -->
-          <div class="content-section">
-            <div class="section-header">
-              <h2 class="section-title">Documents récents</h2>
-              <span class="btn-view-all" data-view="documents">Voir tout →</span>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
             </div>
-            <div class="document-grid" id="dashboard-docs"></div>
-          </div>
-
-          <!-- Quiz disponibles -->
-          <div class="content-section">
-            <div class="section-header">
-              <h2 class="section-title">Quiz disponibles</h2>
-              <span class="btn-view-all" data-view="quiz">Voir tout →</span>
-            </div>
-            <div class="quiz-grid" id="dashboard-quiz"></div>
+            <div class="stat-value" id="stat-quizzes">—</div>
+            <div class="stat-label">Quiz disponibles</div>
           </div>
         </div>
 
-        <!-- COLONNE ÉVÉNEMENTS -->
-        <div class="sidebar-column">
-          <div class="events-section">
-            <h3>Événements à venir</h3>
-            <div id="events-list"></div>
+        <!-- Documents récents -->
+        <div class="content-section">
+          <div class="section-header">
+            <h2 class="section-title">Documents récents</h2>
+            <a href="/documents.html" class="btn-view-all">Voir tout →</a>
           </div>
+          <div class="document-grid" id="dashboard-docs"></div>
+        </div>
+
+        <!-- Quiz disponibles -->
+        <div class="content-section">
+          <div class="section-header">
+            <h2 class="section-title">Quiz disponibles</h2>
+            <a href="/quiz.html" class="btn-view-all">Voir tout →</a>
+          </div>
+          <div class="quiz-grid" id="dashboard-quiz"></div>
         </div>
       </div>
-    </div>
 
-    <!-- VUE DOCUMENTS -->
-    <div id="view-documents" class="view-section">
-      <div class="page-header">
-        <h1 class="page-title">Documents</h1>
-        <p class="page-subtitle">Tous les documents de l'association</p>
-      </div>
-      <div class="content-section">
-        <div class="document-grid" id="all-docs"></div>
-      </div>
-    </div>
-
-    <!-- VUE QUIZ -->
-    <div id="view-quiz" class="view-section">
-      <div class="page-header">
-        <h1 class="page-title">Quiz</h1>
-        <p class="page-subtitle">Tous les quiz disponibles</p>
-      </div>
-      <div class="content-section">
-        <div class="quiz-grid" id="all-quiz"></div>
+      <!-- COLONNE ÉVÉNEMENTS -->
+      <div class="sidebar-column">
+        <div class="events-section">
+          <h3>Événements à venir</h3>
+          <div id="events-list"></div>
+        </div>
       </div>
     </div>
   </main>
@@ -367,76 +179,35 @@
     </div>
   </div>
 
-  <script>
-    const SUPABASE_URL = "https://ckfdysasgawyixbxjyfz.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrZmR5c2FzZ2F3eWl4YnhqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5ODg1NjcsImV4cCI6MjA3NzU2NDU2N30.t0ubaRk5sz7kewyEsOg4CpFvj47S9U1J1SP_3DQBmE8";
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/navigation.js"></script>
+  <script src="/js/components.js"></script>
 
+  <script>
     let currentUserId = null;
     let selectedQuizId = null;
 
-    // === NAVIGATION ===
-    function switchView(viewName) {
-      document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
-      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    async function init() {
+      const user = await checkAuthAndLoad();
+      if (!user) return;
       
-      document.getElementById(`view-${viewName}`).classList.add('active');
-      document.querySelector(`[data-view="${viewName}"]`).classList.add('active');
-
-      // Charger les données selon la vue
-      if (viewName === 'documents') loadAllDocuments();
-      if (viewName === 'quiz') loadAllQuiz();
+      currentUserId = user.id;
+      displayUserInfo(user);
+      initNavigation('dashboard');
+      initLogoutButton();
+      
+      await Promise.all([
+        loadStats(),
+        loadDashboardDocuments(),
+        loadDashboardQuiz(),
+        loadEvents()
+      ]);
+      
+      initModals();
     }
 
-    // Event listeners navigation
-    document.querySelectorAll('.nav-item').forEach(item => {
-      item.addEventListener('click', () => switchView(item.dataset.view));
-    });
-
-    document.querySelectorAll('.btn-view-all').forEach(btn => {
-      btn.addEventListener('click', () => switchView(btn.dataset.view));
-    });
-
-    // === AUTH ===
-    async function checkAuthAndLoad() {
-      try {
-        const { data } = await supabaseClient.auth.getUser();
-        if (!data.user) {
-          window.location.href = "login.html";
-          return;
-        }
-        
-        // Auth OK - afficher le contenu
-        document.body.classList.remove('auth-checking');
-        document.getElementById('auth-loader').classList.add('hide');
-
-        currentUserId = data.user.id;
-        const email = data.user.email || '';
-        const name = email.split('@')[0] || 'Membre';
-        const initials = name.charAt(0).toUpperCase();
-
-        document.getElementById('user-name').textContent = name;
-        document.getElementById('user-avatar').textContent = initials;
-        document.getElementById('welcome-name').textContent = name;
-
-        await Promise.all([
-          loadStats(),
-          loadDashboardDocuments(),
-          loadDashboardQuiz(),
-          loadEvents()
-        ]);
-      } catch (err) {
-        console.error('Auth error', err);
-        window.location.href = "login.html";
-      }
-    }
-
-    document.getElementById('logout').addEventListener('click', async () => {
-      await supabaseClient.auth.signOut();
-      window.location.href = "login.html";
-    });
-
-    // === STATS ===
     async function loadStats() {
       const { count: docsCount } = await supabaseClient
         .from('documents_meta')
@@ -449,91 +220,6 @@
       document.getElementById('stat-quizzes').textContent = qCount ?? '0';
     }
 
-    // === DOCUMENTS ===
-    function timeAgo(dateString) {
-      if (!dateString) return '';
-      const d = new Date(dateString);
-      const now = new Date();
-      const s = Math.floor((now - d) / 1000);
-      if (s < 60) return 'À l\'instant';
-      const m = Math.floor(s/60);
-      if (m < 60) return `Il y a ${m} min`;
-      const h = Math.floor(m/60);
-      if (h < 24) return `Il y a ${h}h`;
-      const days = Math.floor(h/24);
-      if (days < 7) return `Il y a ${days}j`;
-      return d.toLocaleDateString('fr-FR');
-    }
-
-    function getFileType(filename) {
-      if (!filename) return '';
-      const ext = filename.split('.').pop().toLowerCase();
-      if (['pdf'].includes(ext)) return 'PDF';
-      if (['doc','docx'].includes(ext)) return 'DOCX';
-      if (['xls','xlsx','csv'].includes(ext)) return 'XLSX';
-      return ext.toUpperCase();
-    }
-
-    function escapeHtml(unsafe) {
-      if (!unsafe && unsafe !== 0) return '';
-      return String(unsafe).replace(/[&<>"'`=\/]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#x60;','/':'&#x2F;','=':'&#x3D;'})[s]);
-    }
-
-    async function renderDocuments(container, docs) {
-      container.innerHTML = '';
-      
-      for (const doc of docs) {
-        let filePath = doc.storage_path || doc.filepath || doc.filename || doc.file_path;
-        if (!filePath) continue;
-
-        const { data: signedData } = await supabaseClient.storage
-          .from('documents')
-          .createSignedUrl(filePath, 3600);
-        
-        const signedUrl = signedData?.signedUrl || '';
-
-        const card = document.createElement('div');
-        card.className = 'document-card';
-        card.innerHTML = `
-          <div class="document-header">
-            <div class="document-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-            </div>
-            <div class="document-info">
-              <div class="document-title">${escapeHtml(doc.title || doc.filename || 'Sans titre')}</div>
-              <div class="document-meta">${timeAgo(doc.created_at)}</div>
-            </div>
-          </div>
-          <div class="document-footer">
-            <span class="document-type">${getFileType(filePath)}</span>
-            <div class="document-actions">
-              <button class="action-btn btn-download" title="Télécharger" data-filepath="${escapeHtml(filePath)}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              </button>
-            </div>
-          </div>
-        `;
-        
-        card.addEventListener('click', (e) => {
-          if (e.target.closest('.btn-download')) return;
-          if (signedUrl) window.open(signedUrl, '_blank');
-        });
-
-        container.appendChild(card);
-      }
-
-      container.querySelectorAll('.btn-download').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          const filePath = btn.getAttribute('data-filepath');
-          const { data } = await supabaseClient.storage
-            .from('documents')
-            .createSignedUrl(filePath, 60);
-          if (data?.signedUrl) window.open(data.signedUrl, '_blank');
-        });
-      });
-    }
-
     async function loadDashboardDocuments() {
       const { data: docs } = await supabaseClient
         .from('documents_meta')
@@ -541,52 +227,7 @@
         .order('created_at', { ascending: false })
         .limit(4);
       
-      if (docs) renderDocuments(document.getElementById('dashboard-docs'), docs);
-    }
-
-    async function loadAllDocuments() {
-      const { data: docs } = await supabaseClient
-        .from('documents_meta')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (docs) renderDocuments(document.getElementById('all-docs'), docs);
-    }
-
-    // === QUIZ ===
-    function renderQuiz(container, quizzes) {
-      container.innerHTML = '';
-      
-      quizzes.forEach(q => {
-        let questionsCount = 0;
-        try {
-          const qs = typeof q.questions === 'string' ? JSON.parse(q.questions) : q.questions;
-          questionsCount = Array.isArray(qs) ? qs.length : 0;
-        } catch (e) { questionsCount = 0; }
-
-        const estTime = Math.max(1, Math.round(questionsCount * 1));
-
-        const card = document.createElement('div');
-        card.className = 'quiz-card';
-        card.innerHTML = `
-          <div class="quiz-header">
-            <div class="quiz-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-            </div>
-            <div class="quiz-info">
-              <div class="quiz-title">${escapeHtml(q.title || 'Quiz')}</div>
-              <div class="quiz-meta">
-                <span>${questionsCount} question${questionsCount>1?'s':''}</span>
-                <span>•</span>
-                <span>~${estTime} min</span>
-              </div>
-            </div>
-          </div>
-        `;
-        
-        card.addEventListener('click', () => showQuizModal(q));
-        container.appendChild(card);
-      });
+      if (docs) await renderDocuments(document.getElementById('dashboard-docs'), docs);
     }
 
     async function loadDashboardQuiz() {
@@ -596,19 +237,24 @@
         .order('created_at', { ascending: false })
         .limit(4);
       
-      if (quizzes) renderQuiz(document.getElementById('dashboard-quiz'), quizzes);
+      if (quizzes) renderQuiz(document.getElementById('dashboard-quiz'), quizzes, showQuizModal);
     }
 
-    async function loadAllQuiz() {
-      const { data: quizzes } = await supabaseClient
-        .from('quizzes')
-        .select('*')
-        .order('created_at', { ascending: false });
+    async function loadEvents() {
+      await renderEvents(document.getElementById('events-list'));
       
-      if (quizzes) renderQuiz(document.getElementById('all-quiz'), quizzes);
+      // Ajouter les événements de clic pour ouvrir la modale
+      document.querySelectorAll('.event-card').forEach(card => {
+        card.addEventListener('click', function() {
+          const title = this.querySelector('.event-title').textContent;
+          const date = this.querySelector('.event-date').textContent;
+          const location = this.querySelector('.event-location')?.textContent || 'Non précisé';
+          
+          showEventModal({ title, event_date: date, location, description: '' });
+        });
+      });
     }
 
-    // === MODAL QUIZ ===
     function showQuizModal(quiz) {
       selectedQuizId = quiz.id;
       
@@ -628,94 +274,6 @@
       document.getElementById('quiz-modal').classList.add('active');
     }
 
-    function closeQuizModal() {
-      document.getElementById('quiz-modal').classList.remove('active');
-      selectedQuizId = null;
-    }
-
-    document.getElementById('btn-close-modal').addEventListener('click', closeQuizModal);
-
-    document.getElementById('btn-start-quiz').addEventListener('click', async () => {
-      if (!selectedQuizId) return;
-      
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const { data } = await supabaseClient
-        .from('live_sessions')
-        .insert([{
-          quiz_id: selectedQuizId,
-          host_user_id: currentUserId,
-          code: code,
-          status: 'waiting'
-        }])
-        .select()
-        .single();
-
-      if (data) window.open(`host.html?session=${data.id}`, '_blank');
-    });
-
-    // Fermer modal en cliquant à l'extérieur
-    document.getElementById('quiz-modal').addEventListener('click', (e) => {
-      if (e.target.id === 'quiz-modal') closeQuizModal();
-    });
-
-    // === ÉVÉNEMENTS ===
-    async function loadEvents() {
-      const { data: events, error } = await supabaseClient
-        .from('events')
-        .select('*')
-        .order('event_date', { ascending: true });
-
-      const container = document.getElementById('events-list');
-      
-      if (error) {
-        console.error('Erreur Supabase:', error);
-        container.innerHTML = '<div class="empty-events">Erreur de chargement</div>';
-        return;
-      }
-      
-      if (!events || events.length === 0) {
-        container.innerHTML = '<div class="empty-events">Aucun événement dans la base</div>';
-        return;
-      }
-
-      // Filtrer les événements futurs
-      const now = new Date();
-      const futureEvents = events.filter(e => new Date(e.event_date) >= now);
-
-      if (futureEvents.length === 0) {
-        container.innerHTML = '<div class="empty-events">Aucun événement à venir</div>';
-        return;
-      }
-
-      container.innerHTML = '';
-      futureEvents.slice(0, 4).forEach(event => {
-        const date = new Date(event.event_date);
-        const dateStr = date.toLocaleDateString('fr-FR', { 
-          day: 'numeric', 
-          month: 'short', 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        });
-        
-        const card = document.createElement('div');
-        card.className = 'event-card';
-        card.innerHTML = `
-          <div class="event-date">${dateStr}</div>
-          <div class="event-title">${escapeHtml(event.title)}</div>
-          ${event.location ? `<div class="event-location">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-            ${escapeHtml(event.location)}
-          </div>` : ''}
-        `;
-        
-        // Ajouter le clic pour ouvrir la modale
-        card.addEventListener('click', () => showEventModal(event));
-        
-        container.appendChild(card);
-      });
-    }
-
-    // === MODAL ÉVÉNEMENT ===
     function showEventModal(event) {
       const date = new Date(event.event_date);
       const dateStr = date.toLocaleDateString('fr-FR', { 
@@ -735,20 +293,55 @@
       document.getElementById('event-modal').classList.add('active');
     }
 
-    function closeEventModal() {
-      document.getElementById('event-modal').classList.remove('active');
+    function initModals() {
+      // Quiz modal
+      document.getElementById('btn-close-modal').addEventListener('click', () => {
+        document.getElementById('quiz-modal').classList.remove('active');
+        selectedQuizId = null;
+      });
+
+      document.getElementById('btn-start-quiz').addEventListener('click', async () => {
+        if (!selectedQuizId) return;
+        
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const { data } = await supabaseClient
+          .from('live_sessions')
+          .insert([{
+            quiz_id: selectedQuizId,
+            host_user_id: currentUserId,
+            code: code,
+            status: 'waiting'
+          }])
+          .select()
+          .single();
+
+        if (data) window.open(`host.html?session=${data.id}`, '_blank');
+      });
+
+      document.getElementById('quiz-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'quiz-modal') {
+          document.getElementById('quiz-modal').classList.remove('active');
+          selectedQuizId = null;
+        }
+      });
+
+      // Event modal
+      document.getElementById('btn-close-event-modal').addEventListener('click', () => {
+        document.getElementById('event-modal').classList.remove('active');
+      });
+
+      document.getElementById('btn-close-event').addEventListener('click', () => {
+        document.getElementById('event-modal').classList.remove('active');
+      });
+
+      document.getElementById('event-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'event-modal') {
+          document.getElementById('event-modal').classList.remove('active');
+        }
+      });
     }
 
-    document.getElementById('btn-close-event-modal').addEventListener('click', closeEventModal);
-    document.getElementById('btn-close-event').addEventListener('click', closeEventModal);
-
-    // Fermer modal en cliquant à l'extérieur
-    document.getElementById('event-modal').addEventListener('click', (e) => {
-      if (e.target.id === 'event-modal') closeEventModal();
-    });
-
-    // === INIT ===
-    checkAuthAndLoad();
+    init();
   </script>
 </body>
 </html>
