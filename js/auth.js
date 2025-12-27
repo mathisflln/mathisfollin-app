@@ -22,7 +22,21 @@ async function checkAuthAndLoad() {
 }
 
 // Récupérer les infos de l'utilisateur pour l'affichage
-function getUserDisplayInfo(user) {
+async function getUserDisplayInfo(user) {
+  // Récupérer le profil depuis la table profiles
+  const { data: profile } = await supabaseClient
+    .from('profiles')
+    .select('first_name, last_name')
+    .eq('id', user.id)
+    .single();
+  
+  if (profile && profile.first_name && profile.last_name) {
+    const name = `${profile.first_name} ${profile.last_name}`;
+    const initials = `${profile.first_name.charAt(0)}${profile.last_name.charAt(0)}`.toUpperCase();
+    return { name, initials, email: user.email };
+  }
+  
+  // Fallback si pas de nom/prénom
   const email = user.email || '';
   const name = email.split('@')[0] || 'Membre';
   const initials = name.charAt(0).toUpperCase();
@@ -31,8 +45,8 @@ function getUserDisplayInfo(user) {
 }
 
 // Afficher les infos utilisateur dans la sidebar
-function displayUserInfo(user) {
-  const { name, initials } = getUserDisplayInfo(user);
+async function displayUserInfo(user) {
+  const { name, initials } = await getUserDisplayInfo(user);
   
   const userName = document.getElementById('user-name');
   const userAvatar = document.getElementById('user-avatar');
@@ -40,7 +54,7 @@ function displayUserInfo(user) {
   
   if (userName) userName.textContent = name;
   if (userAvatar) userAvatar.textContent = initials;
-  if (welcomeName) welcomeName.textContent = name;
+  if (welcomeName) welcomeName.textContent = name.split(' ')[0]; // Juste le prénom
 }
 
 // Déconnexion
