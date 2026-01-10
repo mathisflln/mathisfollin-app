@@ -538,9 +538,48 @@
     let participants = [];
     let answersChannel = null;
 
+    // Clé pour le stockage
+    const HOST_SESSION_KEY = 'quiz_host_session_id';
+
+    // ============================================
+    // FONCTIONS DE PERSISTANCE HOST
+    // ============================================
+
+    function saveHostSession(sessionId) {
+      try {
+        sessionStorage.setItem(HOST_SESSION_KEY, sessionId);
+      } catch (err) {
+        console.error('Error saving host session:', err);
+      }
+    }
+
+    function loadHostSession() {
+      try {
+        return sessionStorage.getItem(HOST_SESSION_KEY);
+      } catch (err) {
+        console.error('Error loading host session:', err);
+        return null;
+      }
+    }
+
+    function clearHostSession() {
+      try {
+        sessionStorage.removeItem(HOST_SESSION_KEY);
+      } catch (err) {
+        console.error('Error clearing host session:', err);
+      }
+    }
+
+    // ============================================
+    // INITIALISATION
+    // ============================================
+
     async function init() {
       const params = new URLSearchParams(window.location.search);
-      sessionId = params.get('session');
+      const urlSessionId = params.get('session');
+      const savedSessionId = loadHostSession();
+
+      sessionId = urlSessionId || savedSessionId;
 
       if (!sessionId) {
         alert('Session invalide');
@@ -548,10 +587,130 @@
         return;
       }
 
-      await loadSession();
+      if (!savedSessionId || savedSessionId !== sessionId) {
+        saveHostSession(sessionId);
+      }
+
+      try {
+        await loadSession();
+        
+        const { data: session } = await supabaseClient
+          .from('live_sessions')
+          .select('status, current_question_index')
+          .eq('id', sessionId)
+          .single();
+
+        if (session) {
+          if (session.status === 'finished') {
+            await restoreResultsScreen();
+          } else if (session.status === 'active') {
+            await restoreActiveQuestion(session.current_question_index);
+          } else {
+            subscribeToParticipants();
+            subscribeToAnswers();
+          }
+        } else {
+          subscribeToParticipants();
+          subscribeToAnswers();
+        }
+
+      } catch (err) {
+        console.error('Error initializing:', err);
+        clearHostSession();
+        alert('Erreur: session introuvable ou expirée');
+        window.location.href = 'index.html';
+      }
+    }
+
+    // ============================================
+    // RESTAURATION DES ÉCRANS
+    // ============================================
+
+    async function restoreActiveQuestion(questionIndex) {
+      document.getElementById('waiting-screen').style.display = 'none';
+      document.getElementById('question-screen').style.display = 'block';
+      
+      currentQuestionIndex = questionIndex;
+      
+      await displayCurrentQuestion();
+      
       subscribeToParticipants();
       subscribeToAnswers();
+      
+      // Calculer le temps restant
+      const { data: session } = await supabaseClient
+        .from('live_sessions')
+        .select('question_start_time')
+        .eq('id', sessionId)
+        .single();
+      
+      if (session && session.question_start_time) {
+        const startTimeUTC = new Date(session.question_start_time).getTime();
+        const nowUTC = Date.now();
+        const elapsed = Math.floor((nowUTC - startTimeUTC) / 1000);
+        const timeLimit = quizData.questions[questionIndex].timeLimit || 30;
+        const remaining = Math.max(0, timeLimit - elapsed);
+        
+        console.log('🔄 Restauration timer:', {
+          startTime: session.question_start_time,
+          elapsed,
+          timeLimit,
+          remaining
+        });
+        
+        if (remaining > 0) {
+          startTimer(remaining);
+        } else {
+          await showResults();
+        }
+      }
     }
+
+    async function displayCurrentQuestion() {
+      const question = quizData.questions[currentQuestionIndex];
+      
+      document.getElementById('current-question').textContent = currentQuestionIndex + 1;
+      document.getElementById('question-text').textContent = question.question;
+      
+      const optionsGrid = document.getElementById('options-grid');
+      optionsGrid.innerHTML = '';
+      
+      const colors = ['option-a', 'option-b', 'option-c', 'option-d'];
+      question.options.forEach((opt, i) => {
+        const div = document.createElement('div');
+        div.className = `option-box ${colors[i]}`;
+        div.textContent = opt;
+        optionsGrid.appendChild(div);
+      });
+      
+      await updateResponseCounter();
+      subscribeToCurrentQuestionAnswers();
+    }
+
+    async function restoreResultsScreen() {
+      document.getElementById('waiting-screen').style.display = 'none';
+      document.getElementById('question-screen').style.display = 'none';
+      document.getElementById('results-screen').style.display = 'block';
+
+      const { data: finalParticipants } = await supabaseClient
+        .from('session_participants')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('score', { ascending: false });
+
+      const finalLeaderboard = document.getElementById('final-leaderboard');
+      finalLeaderboard.innerHTML = finalParticipants?.map((p, i) => `
+        <div class="participant-item" style="font-size: 1.1rem;">
+          <span style="font-weight: 700;">#${i + 1}</span>
+          <span class="participant-name">${escapeHtml(p.nickname)}</span>
+          <span class="participant-score">${p.score} pts</span>
+        </div>
+      `).join('') || '';
+    }
+
+    // ============================================
+    // CHARGEMENT DE LA SESSION
+    // ============================================
 
     async function loadSession() {
       try {
@@ -581,6 +740,10 @@
         alert('Erreur de chargement: ' + err.message);
       }
     }
+
+    // ============================================
+    // PARTICIPANTS
+    // ============================================
 
     function subscribeToParticipants() {
       supabaseClient
@@ -628,6 +791,10 @@
       document.getElementById('start-btn').disabled = participants.length === 0;
     }
 
+    // ============================================
+    // DÉMARRAGE DU QUIZ
+    // ============================================
+
     document.getElementById('start-btn').addEventListener('click', startQuiz);
 
     async function startQuiz() {
@@ -642,21 +809,24 @@
       showQuestion(0);
     }
 
+    // ============================================
+    // AFFICHAGE DES QUESTIONS
+    // ============================================
+
     async function showQuestion(index) {
       currentQuestionIndex = index;
       const question = quizData.questions[index];
-    
+
       document.getElementById('current-question').textContent = index + 1;
       document.getElementById('question-text').textContent = question.question;
       document.getElementById('response-stats').style.display = 'none';
       document.getElementById('leaderboard').style.display = 'none';
       document.getElementById('next-btn').style.display = 'none';
       
-      // Reset et afficher le compteur de réponses
       document.getElementById('response-count').textContent = '0';
       document.getElementById('total-participants').textContent = participants.length;
       document.getElementById('response-counter').style.display = 'block';
-    
+
       const optionsGrid = document.getElementById('options-grid');
       optionsGrid.innerHTML = '';
       
@@ -667,9 +837,10 @@
         div.textContent = opt;
         optionsGrid.appendChild(div);
       });
-    
+
       questionStartTime = Date.now();
       
+      // IMPORTANT: Utiliser toISOString() pour garantir le format UTC
       await supabaseClient
         .from('live_sessions')
         .update({ 
@@ -677,13 +848,16 @@
           question_start_time: new Date().toISOString()
         })
         .eq('id', sessionId);
-    
-      // S'abonner aux réponses en temps réel pour cette question
+
       subscribeToCurrentQuestionAnswers();
-    
+
       startTimer(question.timeLimit || 30);
     }
-    
+
+    // ============================================
+    // TIMER
+    // ============================================
+
     function startTimer(seconds) {
       let timeLeft = seconds;
       const timerEl = document.getElementById('timer');
@@ -706,6 +880,10 @@
       }, 1000);
     }
 
+    // ============================================
+    // ABONNEMENTS AUX RÉPONSES
+    // ============================================
+
     function subscribeToAnswers() {
       supabaseClient
         .channel('answers')
@@ -721,12 +899,10 @@
     }
 
     function subscribeToCurrentQuestionAnswers() {
-      // Se désabonner du canal précédent s'il existe
       if (answersChannel) {
         supabaseClient.removeChannel(answersChannel);
       }
-    
-      // Créer un nouveau canal pour cette question
+
       answersChannel = supabaseClient
         .channel(`answers-q${currentQuestionIndex}`)
         .on('postgres_changes', {
@@ -735,67 +911,61 @@
           table: 'participant_answers',
           filter: `session_id=eq.${sessionId}`
         }, async (payload) => {
-          // Vérifier que c'est bien pour la question actuelle
           if (payload.new.question_index === currentQuestionIndex) {
             await updateResponseCounter();
           }
         })
         .subscribe();
-    
-      // Charger le compteur initial
+
       updateResponseCounter();
     }
-    
+
     async function updateResponseCounter() {
       const { data: answers, error } = await supabaseClient
         .from('participant_answers')
         .select('id')
         .eq('session_id', sessionId)
         .eq('question_index', currentQuestionIndex);
-    
+
       if (!error && answers) {
         document.getElementById('response-count').textContent = answers.length;
       }
     }
 
+    // ============================================
+    // AFFICHAGE DES RÉSULTATS
+    // ============================================
+
     async function showResults() {
       clearInterval(timerInterval);
 
-      // Se désabonner du canal des réponses
       if (answersChannel) {
         supabaseClient.removeChannel(answersChannel);
       }
-    
-      // Cacher le compteur de réponses
+
       document.getElementById('response-counter').style.display = 'none';
-    
-      // Afficher un écran de chargement
+
       const questionText = document.getElementById('question-text');
       questionText.innerHTML = '<div style="text-align: center; color: #667eea;"><div class="spinner"></div><p style="font-size: 1.2rem; margin-top: 15px;">Analyse des réponses en cours...</p></div>';
-    
-      // Attendre 2.5 secondes pour recevoir toutes les réponses
+
       await new Promise(resolve => setTimeout(resolve, 2500));
-    
+
       const question = quizData.questions[currentQuestionIndex];
 
-      // Remettre le texte de la question
       questionText.textContent = question.question;
       
-      // Get all answers for this question
       const { data: answers } = await supabaseClient
         .from('participant_answers')
         .select('*')
         .eq('session_id', sessionId)
         .eq('question_index', currentQuestionIndex);
 
-      // Calculate statistics
       const stats = question.options.map((_, i) => {
         const count = answers?.filter(a => a.answer_index === i).length || 0;
         const percentage = answers?.length ? Math.round((count / answers.length) * 100) : 0;
         return { count, percentage };
       });
 
-      // Show stats
       const statsContainer = document.getElementById('response-stats');
       statsContainer.style.display = 'block';
       statsContainer.innerHTML = question.options.map((opt, i) => `
@@ -810,116 +980,79 @@
         </div>
       `).join('');
 
-      // Highlight correct answer
       const optionsBoxes = document.querySelectorAll('.option-box');
       optionsBoxes[question.correctIndex].classList.add('correct');
 
-      // Update leaderboard
       await updateScores();
       await showLeaderboard();
 
-      // Show next button
       document.getElementById('next-btn').style.display = 'block';
     }
 
+    // ============================================
+    // CALCUL DES SCORES
+    // ============================================
+
     async function updateScores() {
       const question = quizData.questions[currentQuestionIndex];
-      const maxTime = (question.timeLimit || 30) * 1000; // en millisecondes
-    
-      // IMPORTANT: Sélectionner TOUTES les colonnes, y compris created_at
+      const maxTime = (question.timeLimit || 30) * 1000;
+
       const { data: answers, error: answersError } = await supabaseClient
         .from('participant_answers')
         .select('*')
         .eq('session_id', sessionId)
         .eq('question_index', currentQuestionIndex);
-    
+
       if (answersError) {
         console.error('Error fetching answers:', answersError);
         return;
       }
-    
+
       if (!answers || answers.length === 0) {
         console.log('No answers found for this question');
         return;
       }
-    
-      console.log('Fetched answers:', answers);
-      console.log('First answer object:', JSON.stringify(answers[0], null, 2));
-      console.log('First answer keys:', Object.keys(answers[0]));
-    
-      // Récupérer le temps de début de la question depuis la session
+
       const { data: session } = await supabaseClient
         .from('live_sessions')
         .select('question_start_time')
         .eq('id', sessionId)
         .single();
       
-      // Convertir en UTC pour éviter les problèmes de fuseau horaire
-      const questionStartTime = new Date(session.question_start_time).getTime();
+      const questionStartTimeUTC = new Date(session.question_start_time).getTime();
       
       for (const answer of answers) {
-        console.log('=== DEBUG ANSWER ===');
-        console.log('Answer created_at:', answer.created_at);
-        console.log('Question start time:', session.question_start_time);
-        
         if (answer.answer_index === question.correctIndex) {
-          // Calculer le temps de réponse
-          const answerTime = new Date(answer.created_at).getTime();
-          const rawResponseTime = answerTime - questionStartTime;
+          const answerTimeUTC = new Date(answer.created_at).getTime();
+          const responseTime = answerTimeUTC - questionStartTimeUTC;
           
-          // Correction du décalage UTC (soustraire 1 heure = 3600000 ms)
-          const actualResponseTime = rawResponseTime - 3600000;
+          console.log('⏱️ Calcul score:', {
+            questionStart: session.question_start_time,
+            answerTime: answer.created_at,
+            responseTime: responseTime,
+            responseSeconds: (responseTime / 1000).toFixed(2)
+          });
           
-          console.log('=== CALCUL DÉTAILLÉ ===');
-          console.log('Answer created_at STRING:', answer.created_at);
-          console.log('Question start STRING:', session.question_start_time);
-          console.log('Answer time (ms):', answerTime);
-          console.log('Question start (ms):', questionStartTime);
-          console.log('Actual response time:', actualResponseTime, 'ms');
-          console.log('Actual response time (seconds):', (actualResponseTime / 1000).toFixed(2), 's');
-          console.log('Max time:', maxTime, 'ms');
-          console.log('Max time (seconds):', (maxTime / 1000).toFixed(2), 's');
-          
-          // Vérifier si le temps est valide
-          console.log('Time is positive?', actualResponseTime > 0);
-          console.log('Time is within limit?', actualResponseTime <= maxTime);
-          
-          // Sécurité : si le temps est négatif ou trop grand, utiliser un temps par défaut
-          const validResponseTime = (actualResponseTime > 0 && actualResponseTime <= maxTime) 
-            ? actualResponseTime 
+          const validResponseTime = (responseTime > 0 && responseTime <= maxTime) 
+            ? responseTime 
             : maxTime;
           
-          console.log('Valid response time used:', validResponseTime, 'ms');
-          console.log('Valid response time (seconds):', (validResponseTime / 1000).toFixed(2), 's');
-          
-          // Décroissance linéaire : 1000 points si instantané, 100 points à la fin
           const timeRatio = validResponseTime / maxTime;
-          console.log('Time ratio (before min):', timeRatio);
-          console.log('Time ratio (after min):', Math.min(1, timeRatio));
-          
-          // Plus le temps est proche de 0, plus on a de points
-          // timeRatio = 0 (instantané) → points = 1000
-          // timeRatio = 1 (temps max) → points = 100
           const points = Math.round(1000 - (900 * Math.min(1, timeRatio)));
-          console.log('Points calculés:', points);
-          console.log('===================');
-    
-          // Récupérer le score actuel du participant
+
           const { data: participant } = await supabaseClient
             .from('session_participants')
             .select('score')
             .eq('id', answer.participant_id)
             .single();
-    
-          // Mettre à jour avec le score cumulé
+
           const newScore = (participant?.score || 0) + points;
           
           await supabaseClient
             .from('session_participants')
             .update({ score: newScore })
             .eq('id', answer.participant_id);
-    
-          // Mettre à jour la réponse avec les informations
+
           await supabaseClient
             .from('participant_answers')
             .update({ 
@@ -928,7 +1061,6 @@
             })
             .eq('id', answer.id);
         } else {
-          // Mauvaise réponse
           await supabaseClient
             .from('participant_answers')
             .update({ 
@@ -938,9 +1070,13 @@
             .eq('id', answer.id);
         }
       }
-    
+
       await loadParticipants();
     }
+
+    // ============================================
+    // LEADERBOARD
+    // ============================================
 
     async function showLeaderboard() {
       const { data: topParticipants } = await supabaseClient
@@ -966,6 +1102,10 @@
 
       document.getElementById('leaderboard').style.display = 'block';
     }
+
+    // ============================================
+    // NAVIGATION
+    // ============================================
 
     document.getElementById('next-btn').addEventListener('click', () => {
       if (currentQuestionIndex < quizData.questions.length - 1) {
@@ -1001,9 +1141,14 @@
     }
 
     document.getElementById('close-btn').addEventListener('click', async () => {
+      clearHostSession();
       await supabaseClient.from('live_sessions').delete().eq('id', sessionId);
       window.location.href = 'index.html';
     });
+
+    // ============================================
+    // UTILS
+    // ============================================
 
     function escapeHtml(unsafe) {
       if (!unsafe) return '';
@@ -1011,6 +1156,26 @@
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
       })[m]);
     }
+
+    // ============================================
+    // PRÉVENTION RECHARGEMENT
+    // ============================================
+
+    window.addEventListener('beforeunload', (e) => {
+      const waitingScreen = document.getElementById('waiting-screen');
+      const resultsScreen = document.getElementById('results-screen');
+      
+      if (waitingScreen.style.display === 'none' && 
+          resultsScreen.style.display === 'none') {
+        e.preventDefault();
+        e.returnValue = 'Le quiz est en cours. Êtes-vous sûr de vouloir quitter ?';
+        return e.returnValue;
+      }
+    });
+
+    // ============================================
+    // INITIALISATION
+    // ============================================
 
     init();
   </script>
