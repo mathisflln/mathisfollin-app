@@ -573,7 +573,7 @@
         document.getElementById('session-code').textContent = session.code;
         document.getElementById('total-questions').textContent = quizData.questions.length;
 
-        const joinUrl = `${window.location.origin}/player.html?code=${session.code}`;
+        const joinUrl = `https://mathisfollin.fr/player`;
         document.getElementById('join-url').textContent = joinUrl;
 
       } catch (err) {
