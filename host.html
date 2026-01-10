@@ -1039,18 +1039,29 @@
           });
           
           // Sécurité : si temps négatif ou > maxTime, utiliser maxTime
-          const validResponseSeconds = Math.max(0, Math.min(responseTimeSeconds, maxTimeSeconds));
+          let validResponseSeconds = responseTimeSeconds;
+          if (validResponseSeconds < 0) {
+            console.warn('⚠️ Temps négatif détecté, utilisation de 0');
+            validResponseSeconds = 0;
+          } else if (validResponseSeconds > maxTimeSeconds) {
+            console.warn('⚠️ Temps supérieur au max, utilisation du max');
+            validResponseSeconds = maxTimeSeconds;
+          }
           
-          // CORRECTION: Décroissance linéaire de 1000 à 100 points
-          // Formule: points = 1000 - (900 * (temps / tempsMax))
+          // CORRECTION CRITIQUE: Décroissance linéaire de 1000 à 100 points
+          // Si temps = 0s → ratio = 0 → points = 1000 - 0 = 1000
+          // Si temps = maxTime → ratio = 1 → points = 1000 - 900 = 100
           const timeRatio = validResponseSeconds / maxTimeSeconds;
-          const points = Math.round(1000 - (900 * timeRatio));
+          const pointsBeforeRounding = 1000 - (900 * timeRatio);
+          const points = Math.max(100, Math.min(1000, Math.round(pointsBeforeRounding)));
           
           console.log('💰 Points calculés:', {
             participant_id: answer.participant_id,
             validResponseSeconds: validResponseSeconds.toFixed(2),
-            timeRatio: timeRatio.toFixed(3),
-            points: points
+            maxTimeSeconds: maxTimeSeconds,
+            timeRatio: timeRatio.toFixed(4),
+            pointsBeforeRounding: pointsBeforeRounding.toFixed(2),
+            pointsFinal: points
           });
 
           const { data: participant } = await supabaseClient
@@ -1060,6 +1071,12 @@
             .single();
 
           const newScore = (participant?.score || 0) + points;
+          
+          console.log('📝 Mise à jour score:', {
+            oldScore: participant?.score || 0,
+            pointsToAdd: points,
+            newScore: newScore
+          });
           
           await supabaseClient
             .from('session_participants')
