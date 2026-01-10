@@ -1028,26 +1028,55 @@
         .eq('id', sessionId)
         .single();
       
-      const questionStartTimeUTC = new Date(session.question_start_time).getTime();
+      // Parser le timestamp en UTC
+      const timestampStr = session.question_start_time.endsWith('Z') 
+        ? session.question_start_time 
+        : session.question_start_time + 'Z';
+      
+      const questionStartTimeUTC = new Date(timestampStr).getTime();
+      
+      console.log('📊 Calcul des scores - Question start time:', {
+        raw: session.question_start_time,
+        withZ: timestampStr,
+        UTC_ms: questionStartTimeUTC,
+        maxTime: maxTime,
+        totalAnswers: answers.length
+      });
       
       for (const answer of answers) {
         if (answer.answer_index === question.correctIndex) {
-          const answerTimeUTC = new Date(answer.created_at).getTime();
+          // Parser le timestamp de la réponse en UTC
+          const answerTimestampStr = answer.created_at.endsWith('Z') 
+            ? answer.created_at 
+            : answer.created_at + 'Z';
+          
+          const answerTimeUTC = new Date(answerTimestampStr).getTime();
           const responseTime = answerTimeUTC - questionStartTimeUTC;
           
-          console.log('⏱️ Calcul score:', {
-            questionStart: session.question_start_time,
-            answerTime: answer.created_at,
+          console.log('⏱️ Calcul score pour:', answer.participant_id, {
+            answerCreatedAt: answer.created_at,
+            answerTimeUTC: answerTimeUTC,
+            questionStartTimeUTC: questionStartTimeUTC,
             responseTime: responseTime,
             responseSeconds: (responseTime / 1000).toFixed(2)
           });
           
+          // Sécurité : si le temps est négatif ou trop grand, utiliser un temps par défaut
           const validResponseTime = (responseTime > 0 && responseTime <= maxTime) 
             ? responseTime 
             : maxTime;
           
+          // Calcul avec décroissance linéaire : 1000 points si instantané, 100 points à la fin
           const timeRatio = validResponseTime / maxTime;
           const points = Math.round(1000 - (900 * Math.min(1, timeRatio)));
+          
+          console.log('💰 Points calculés:', {
+            participant_id: answer.participant_id,
+            validResponseTime: validResponseTime,
+            validResponseSeconds: (validResponseTime / 1000).toFixed(2),
+            timeRatio: timeRatio.toFixed(3),
+            points: points
+          });
 
           const { data: participant } = await supabaseClient
             .from('session_participants')
