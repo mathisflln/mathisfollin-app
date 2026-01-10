@@ -526,7 +526,7 @@
   </div>
 
   <script>
-    const SUPABASE_URL = "https://ckfdysasgawyixbxjyfz.supabase.co";
+const SUPABASE_URL = "https://ckfdysasgawyixbxjyfz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrZmR5c2FzZ2F3eWl4YnhqeWZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5ODg1NjcsImV4cCI6MjA3NzU2NDU2N30.t0ubaRk5sz7kewyEsOg4CpFvj47S9U1J1SP_3DQBmE8";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -539,10 +539,6 @@ let participants = [];
 let answersChannel = null;
 
 const HOST_SESSION_KEY = 'quiz_host_session_id';
-
-// ============================================
-// FONCTIONS DE PERSISTANCE HOST
-// ============================================
 
 function saveHostSession(sessionId) {
   try {
@@ -568,10 +564,6 @@ function clearHostSession() {
     console.error('Error clearing host session:', err);
   }
 }
-
-// ============================================
-// INITIALISATION
-// ============================================
 
 async function init() {
   const params = new URLSearchParams(window.location.search);
@@ -621,10 +613,6 @@ async function init() {
   }
 }
 
-// ============================================
-// RESTAURATION DES ÉCRANS
-// ============================================
-
 async function restoreActiveQuestion(questionIndex) {
   document.getElementById('waiting-screen').style.display = 'none';
   document.getElementById('question-screen').style.display = 'block';
@@ -648,13 +636,6 @@ async function restoreActiveQuestion(questionIndex) {
     const elapsed = Math.floor((now - startTime) / 1000);
     const timeLimit = quizData.questions[questionIndex].timeLimit || 30;
     const remaining = Math.max(0, timeLimit - elapsed);
-    
-    console.log('🔄 Restauration timer:', {
-      startTime: session.question_start_time,
-      elapsed,
-      timeLimit,
-      remaining
-    });
     
     if (remaining > 0) {
       startTimer(remaining);
@@ -706,10 +687,6 @@ async function restoreResultsScreen() {
   `).join('') || '';
 }
 
-// ============================================
-// CHARGEMENT DE LA SESSION
-// ============================================
-
 async function loadSession() {
   try {
     const { data: session, error: sessionError } = await supabaseClient
@@ -738,10 +715,6 @@ async function loadSession() {
     alert('Erreur de chargement: ' + err.message);
   }
 }
-
-// ============================================
-// PARTICIPANTS
-// ============================================
 
 function subscribeToParticipants() {
   supabaseClient
@@ -789,10 +762,6 @@ async function loadParticipants() {
   document.getElementById('start-btn').disabled = participants.length === 0;
 }
 
-// ============================================
-// DÉMARRAGE DU QUIZ
-// ============================================
-
 document.getElementById('start-btn').addEventListener('click', startQuiz);
 
 async function startQuiz() {
@@ -806,10 +775,6 @@ async function startQuiz() {
 
   showQuestion(0);
 }
-
-// ============================================
-// AFFICHAGE DES QUESTIONS
-// ============================================
 
 async function showQuestion(index) {
   currentQuestionIndex = index;
@@ -836,12 +801,8 @@ async function showQuestion(index) {
     optionsGrid.appendChild(div);
   });
 
-  // CORRECTION: Créer le timestamp AVANT le update pour éviter 2 updates
   const nowUTC = new Date().toISOString();
   
-  console.log('🕐 Timestamp question:', nowUTC);
-  
-  // UN SEUL UPDATE avec tout dedans
   await supabaseClient
     .from('live_sessions')
     .update({ 
@@ -853,10 +814,6 @@ async function showQuestion(index) {
   subscribeToCurrentQuestionAnswers();
   startTimer(question.timeLimit || 30);
 }
-
-// ============================================
-// TIMER
-// ============================================
 
 function startTimer(seconds) {
   let timeLeft = seconds;
@@ -880,10 +837,6 @@ function startTimer(seconds) {
   }, 1000);
 }
 
-// ============================================
-// ABONNEMENTS AUX RÉPONSES
-// ============================================
-
 function subscribeToAnswers() {
   supabaseClient
     .channel('answers')
@@ -893,7 +846,6 @@ function subscribeToAnswers() {
       table: 'participant_answers',
       filter: `session_id=eq.${sessionId}`
     }, () => {
-      // Real-time update could be added here
     })
     .subscribe();
 }
@@ -931,10 +883,6 @@ async function updateResponseCounter() {
     document.getElementById('response-count').textContent = answers.length;
   }
 }
-
-// ============================================
-// AFFICHAGE DES RÉSULTATS
-// ============================================
 
 async function showResults() {
   clearInterval(timerInterval);
@@ -989,13 +937,10 @@ async function showResults() {
   document.getElementById('next-btn').style.display = 'block';
 }
 
-// ============================================
-// CALCUL DES SCORES - CORRIGÉ
-// ============================================
-
+// CORRECTION 1: Formule de calcul des points
 async function updateScores() {
   const question = quizData.questions[currentQuestionIndex];
-  const maxTimeSeconds = question.timeLimit || 30;
+  const maxTimeMs = (question.timeLimit || 30) * 1000;
 
   const { data: answers, error: answersError } = await supabaseClient
     .from('participant_answers')
@@ -1003,8 +948,13 @@ async function updateScores() {
     .eq('session_id', sessionId)
     .eq('question_index', currentQuestionIndex);
 
-  if (answersError || !answers || answers.length === 0) {
+  if (answersError) {
     console.error('Error fetching answers:', answersError);
+    return;
+  }
+
+  if (!answers || answers.length === 0) {
+    console.log('No answers found for this question');
     return;
   }
 
@@ -1014,54 +964,27 @@ async function updateScores() {
     .eq('id', sessionId)
     .single();
   
-  const questionStartTime = new Date(session.question_start_time).getTime();
-  
-  console.log('📊 Calcul des scores - Question start time:', {
-    raw: session.question_start_time,
-    timestamp: questionStartTime,
-    maxTimeSeconds: maxTimeSeconds,
-    totalAnswers: answers.length
-  });
+  const questionStartTimeMs = new Date(session.question_start_time).getTime();
   
   for (const answer of answers) {
     if (answer.answer_index === question.correctIndex) {
-      const answerTime = new Date(answer.created_at).getTime();
-      const responseTimeMs = answerTime - questionStartTime;
-      const responseTimeSeconds = responseTimeMs / 1000;
+      const answerTimeMs = new Date(answer.created_at).getTime();
+      const responseTimeMs = answerTimeMs - questionStartTimeMs;
       
-      console.log('⏱️ Calcul pour participant:', answer.participant_id, {
-        answerCreatedAt: answer.created_at,
-        answerTime: answerTime,
-        questionStartTime: questionStartTime,
-        responseTimeMs: responseTimeMs,
-        responseTimeSeconds: responseTimeSeconds.toFixed(2)
-      });
-      
-      // Sécurité : si temps négatif ou > maxTime, utiliser maxTime
-      let validResponseSeconds = responseTimeSeconds;
-      if (validResponseSeconds < 0) {
-        console.warn('⚠️ Temps négatif détecté, utilisation de 0');
-        validResponseSeconds = 0;
-      } else if (validResponseSeconds > maxTimeSeconds) {
-        console.warn('⚠️ Temps supérieur au max, utilisation du max');
-        validResponseSeconds = maxTimeSeconds;
+      // CORRECTION: Formule simple et directe
+      // Points = 1000 si instantané, décroît linéairement jusqu'à 100
+      let points;
+      if (responseTimeMs <= 0) {
+        points = 1000;
+      } else if (responseTimeMs >= maxTimeMs) {
+        points = 100;
+      } else {
+        // Décroissance linéaire: 1000 -> 100 sur la durée maxTimeMs
+        points = Math.round(1000 - ((responseTimeMs / maxTimeMs) * 900));
       }
       
-      // CORRECTION CRITIQUE: Décroissance linéaire de 1000 à 100 points
-      // Si temps = 0s → ratio = 0 → points = 1000 - 0 = 1000
-      // Si temps = maxTime → ratio = 1 → points = 1000 - 900 = 100
-      const timeRatio = validResponseSeconds / maxTimeSeconds;
-      const pointsBeforeRounding = 1000 - (900 * timeRatio);
-      const points = Math.max(100, Math.min(1000, Math.round(pointsBeforeRounding)));
-      
-      console.log('💰 Points calculés:', {
-        participant_id: answer.participant_id,
-        validResponseSeconds: validResponseSeconds.toFixed(2),
-        maxTimeSeconds: maxTimeSeconds,
-        timeRatio: timeRatio.toFixed(4),
-        pointsBeforeRounding: pointsBeforeRounding.toFixed(2),
-        pointsFinal: points
-      });
+      // Sécurité
+      points = Math.max(100, Math.min(1000, points));
 
       const { data: participant } = await supabaseClient
         .from('session_participants')
@@ -1070,12 +993,6 @@ async function updateScores() {
         .single();
 
       const newScore = (participant?.score || 0) + points;
-      
-      console.log('📝 Mise à jour score:', {
-        oldScore: participant?.score || 0,
-        pointsToAdd: points,
-        newScore: newScore
-      });
       
       await supabaseClient
         .from('session_participants')
@@ -1104,10 +1021,6 @@ async function updateScores() {
   await loadParticipants();
 }
 
-// ============================================
-// LEADERBOARD
-// ============================================
-
 async function showLeaderboard() {
   const { data: topParticipants } = await supabaseClient
     .from('session_participants')
@@ -1132,10 +1045,6 @@ async function showLeaderboard() {
 
   document.getElementById('leaderboard').style.display = 'block';
 }
-
-// ============================================
-// NAVIGATION
-// ============================================
 
 document.getElementById('next-btn').addEventListener('click', () => {
   if (currentQuestionIndex < quizData.questions.length - 1) {
@@ -1176,20 +1085,12 @@ document.getElementById('close-btn').addEventListener('click', async () => {
   window.location.href = 'index.html';
 });
 
-// ============================================
-// UTILS
-// ============================================
-
 function escapeHtml(unsafe) {
   if (!unsafe) return '';
   return String(unsafe).replace(/[&<>"']/g, (m) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
   })[m]);
 }
-
-// ============================================
-// PRÉVENTION RECHARGEMENT
-// ============================================
 
 window.addEventListener('beforeunload', (e) => {
   const waitingScreen = document.getElementById('waiting-screen');
@@ -1202,10 +1103,6 @@ window.addEventListener('beforeunload', (e) => {
     return e.returnValue;
   }
 });
-
-// ============================================
-// INITIALISATION
-// ============================================
 
 init();
   </script>
