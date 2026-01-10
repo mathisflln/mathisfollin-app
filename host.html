@@ -538,7 +538,6 @@
     let participants = [];
     let answersChannel = null;
 
-    // Clé pour le stockage
     const HOST_SESSION_KEY = 'quiz_host_session_id';
 
     // ============================================
@@ -637,7 +636,6 @@
       subscribeToParticipants();
       subscribeToAnswers();
       
-      // Calculer le temps restant
       const { data: session } = await supabaseClient
         .from('live_sessions')
         .select('question_start_time')
@@ -645,9 +643,9 @@
         .single();
       
       if (session && session.question_start_time) {
-        const startTimeUTC = new Date(session.question_start_time).getTime();
-        const nowUTC = Date.now();
-        const elapsed = Math.floor((nowUTC - startTimeUTC) / 1000);
+        const startTime = new Date(session.question_start_time).getTime();
+        const now = Date.now();
+        const elapsed = Math.floor((now - startTime) / 1000);
         const timeLimit = quizData.questions[questionIndex].timeLimit || 30;
         const remaining = Math.max(0, timeLimit - elapsed);
         
@@ -838,28 +836,22 @@
         optionsGrid.appendChild(div);
       });
 
-      // CRITIQUE: Créer un timestamp UTC propre
-      const nowUTC = new Date();
-      const timestampUTC = nowUTC.toISOString();
+      // Timestamp UTC
+      const nowUTC = new Date().toISOString();
       
-      console.log('🕐 Création timestamp question:', {
-        nowUTC: nowUTC,
-        timestampISO: timestampUTC,
-        timestampMs: nowUTC.getTime()
-      });
+      console.log('🕐 Création timestamp question:', nowUTC);
       
       await supabaseClient
         .from('live_sessions')
         .update({ 
           current_question_index: index,
-          question_start_time: timestampUTC
+          question_start_time: nowUTC
         })
         .eq('id', sessionId);
         
-      console.log('✅ Question start time enregistré:', timestampUTC);
+      console.log('✅ Question start time enregistré:', nowUTC);
 
       subscribeToCurrentQuestionAnswers();
-
       startTimer(question.timeLimit || 30);
     }
 
@@ -999,12 +991,12 @@
     }
 
     // ============================================
-    // CALCUL DES SCORES
+    // CALCUL DES SCORES - CORRIGÉ
     // ============================================
 
     async function updateScores() {
       const question = quizData.questions[currentQuestionIndex];
-      const maxTime = (question.timeLimit || 30) * 1000;
+      const maxTimeSeconds = question.timeLimit || 30;
 
       const { data: answers, error: answersError } = await supabaseClient
         .from('participant_answers')
@@ -1012,13 +1004,8 @@
         .eq('session_id', sessionId)
         .eq('question_index', currentQuestionIndex);
 
-      if (answersError) {
+      if (answersError || !answers || answers.length === 0) {
         console.error('Error fetching answers:', answersError);
-        return;
-      }
-
-      if (!answers || answers.length === 0) {
-        console.log('No answers found for this question');
         return;
       }
 
@@ -1028,52 +1015,40 @@
         .eq('id', sessionId)
         .single();
       
-      // Parser le timestamp en UTC
-      const timestampStr = session.question_start_time.endsWith('Z') 
-        ? session.question_start_time 
-        : session.question_start_time + 'Z';
-      
-      const questionStartTimeUTC = new Date(timestampStr).getTime();
+      const questionStartTime = new Date(session.question_start_time).getTime();
       
       console.log('📊 Calcul des scores - Question start time:', {
         raw: session.question_start_time,
-        withZ: timestampStr,
-        UTC_ms: questionStartTimeUTC,
-        maxTime: maxTime,
+        timestamp: questionStartTime,
+        maxTimeSeconds: maxTimeSeconds,
         totalAnswers: answers.length
       });
       
       for (const answer of answers) {
         if (answer.answer_index === question.correctIndex) {
-          // Parser le timestamp de la réponse en UTC
-          const answerTimestampStr = answer.created_at.endsWith('Z') 
-            ? answer.created_at 
-            : answer.created_at + 'Z';
+          const answerTime = new Date(answer.created_at).getTime();
+          const responseTimeMs = answerTime - questionStartTime;
+          const responseTimeSeconds = responseTimeMs / 1000;
           
-          const answerTimeUTC = new Date(answerTimestampStr).getTime();
-          const responseTime = answerTimeUTC - questionStartTimeUTC;
-          
-          console.log('⏱️ Calcul score pour:', answer.participant_id, {
+          console.log('⏱️ Calcul pour participant:', answer.participant_id, {
             answerCreatedAt: answer.created_at,
-            answerTimeUTC: answerTimeUTC,
-            questionStartTimeUTC: questionStartTimeUTC,
-            responseTime: responseTime,
-            responseSeconds: (responseTime / 1000).toFixed(2)
+            answerTime: answerTime,
+            questionStartTime: questionStartTime,
+            responseTimeMs: responseTimeMs,
+            responseTimeSeconds: responseTimeSeconds.toFixed(2)
           });
           
-          // Sécurité : si le temps est négatif ou trop grand, utiliser un temps par défaut
-          const validResponseTime = (responseTime > 0 && responseTime <= maxTime) 
-            ? responseTime 
-            : maxTime;
+          // Sécurité : si temps négatif ou > maxTime, utiliser maxTime
+          const validResponseSeconds = Math.max(0, Math.min(responseTimeSeconds, maxTimeSeconds));
           
-          // Calcul avec décroissance linéaire : 1000 points si instantané, 100 points à la fin
-          const timeRatio = validResponseTime / maxTime;
-          const points = Math.round(1000 - (900 * Math.min(1, timeRatio)));
+          // CORRECTION: Décroissance linéaire de 1000 à 100 points
+          // Formule: points = 1000 - (900 * (temps / tempsMax))
+          const timeRatio = validResponseSeconds / maxTimeSeconds;
+          const points = Math.round(1000 - (900 * timeRatio));
           
           console.log('💰 Points calculés:', {
             participant_id: answer.participant_id,
-            validResponseTime: validResponseTime,
-            validResponseSeconds: (validResponseTime / 1000).toFixed(2),
+            validResponseSeconds: validResponseSeconds.toFixed(2),
             timeRatio: timeRatio.toFixed(3),
             points: points
           });
@@ -1095,7 +1070,8 @@
             .from('participant_answers')
             .update({ 
               is_correct: true, 
-              points_earned: points 
+              points_earned: points,
+              response_time: Math.round(responseTimeMs)
             })
             .eq('id', answer.id);
         } else {
