@@ -838,16 +838,25 @@
         optionsGrid.appendChild(div);
       });
 
-      questionStartTime = Date.now();
+      // CRITIQUE: Créer un timestamp UTC propre
+      const nowUTC = new Date();
+      const timestampUTC = nowUTC.toISOString();
       
-      // IMPORTANT: Utiliser toISOString() pour garantir le format UTC
+      console.log('🕐 Création timestamp question:', {
+        nowUTC: nowUTC,
+        timestampISO: timestampUTC,
+        timestampMs: nowUTC.getTime()
+      });
+      
       await supabaseClient
         .from('live_sessions')
         .update({ 
           current_question_index: index,
-          question_start_time: new Date().toISOString()
+          question_start_time: timestampUTC
         })
         .eq('id', sessionId);
+        
+      console.log('✅ Question start time enregistré:', timestampUTC);
 
       subscribeToCurrentQuestionAnswers();
 
